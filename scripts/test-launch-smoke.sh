@@ -4,77 +4,96 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
+MAX_PARALLEL="${1:-3}"
+
 echo "=== Launch Smoke Test ==="
+echo "  Max parallel: $MAX_PARALLEL"
 echo ""
 
-CLIENT_TIMEOUT=30
-
-# Discover all version-loader pairs from settings.gradle.kts
-VERSIONS=$(grep 'match("[0-9]' settings.gradle.kts | sed 's/.*match("\(.*\)", "\(.*\)").*/\1-\2/')
+VERSIONS=$(grep 'match("[0-9]' settings.gradle.kts | while IFS= read -r line; do
+    version=$(echo "$line" | sed 's/.*match("\([^"]*\)".*/\1/')
+    loaders=$(echo "$line" | grep -oP '", "\K[^"]*')
+    while IFS= read -r loader; do
+        echo "$version-$loader"
+    done <<< "$loaders"
+done)
 if [ -z "$VERSIONS" ]; then
     echo "ERROR: no versions found in settings.gradle.kts" >&2
     exit 1
 fi
 
 echo "Versions under test:"
-for VERSION in $VERSIONS; do
-    echo "  - $VERSION"
-done
+echo "$VERSIONS"
 echo ""
 
+mapfile -t VERSION_ARRAY <<< "$VERSIONS"
+
+LOG_FILES=()
+
 cleanup() {
+    for PID in "${RUNNING_PIDS[@]:-}"; do
+        kill "$PID" 2>/dev/null || true
+    done
     ./gradlew "Refresh active project" > /dev/null 2>&1 || true
 }
 
 trap cleanup EXIT
 
-# Set active code with devtools
 ./gradlew "Refresh active project" -Plive_voice_translate.devtools=true > /dev/null 2>&1
 
-# Clean up stale temp files
 rm -f /tmp/launch-smoke-*.log
 
-declare -a LOG_FILES
-declare -a VERSION_LIST
-
-I=0
-for VERSION in $VERSIONS; do
-    LOG_FILE=$(mktemp "/tmp/launch-smoke-${VERSION}-XXXXXX.log")
-    LOG_FILES[$I]="$LOG_FILE"
-    VERSION_LIST[$I]="$VERSION"
+run_version() {
+    local VERSION="$1" LOG_FILE="$2"
 
     echo "[$(date +%H:%M:%S)] === Testing $VERSION ==="
 
-    if timeout "$CLIENT_TIMEOUT" ./gradlew ":$VERSION:runClient" -Plive_voice_translate.devtools=true --no-daemon > "$LOG_FILE" 2>&1; then
+    if ./gradlew ":$VERSION:runClient" -Plive_voice_translate.devtools=true --no-daemon 2>&1 | tee "$LOG_FILE"; then
         echo "[$(date +%H:%M:%S)] === BUILD SUCCESSFUL: $VERSION ==="
     else
         EXIT_CODE=$?
-        if [ "$EXIT_CODE" -eq 124 ]; then
-            echo "[$(date +%H:%M:%S)] === TIMED OUT: $VERSION (expected) ==="
-        else
-            echo "[$(date +%H:%M:%S)] === BUILD FAILED: $VERSION (exit $EXIT_CODE) ==="
-        fi
+        echo "[$(date +%H:%M:%S)] === BUILD FAILED: $VERSION (exit $EXIT_CODE) ==="
     fi
 
-    # Copy Minecraft log alongside gradle output
     MC_LOG="versions/$VERSION/run/logs/latest.log"
     if [ -f "$MC_LOG" ]; then
         cp "$MC_LOG" "${LOG_FILE%.log}-minecraft.log"
     fi
+}
 
-    echo ""
-    I=$((I+1))
+RUNNING_PIDS=()
+for VERSION in "${VERSION_ARRAY[@]}"; do
+    LOG_FILE=$(mktemp "/tmp/launch-smoke-${VERSION}-XXXXXX.log")
+    LOG_FILES+=("$VERSION:$LOG_FILE")
+
+    run_version "$VERSION" "$LOG_FILE" &
+    PID=$!
+    RUNNING_PIDS+=("$PID")
+
+    if [ ${#RUNNING_PIDS[@]} -ge "$MAX_PARALLEL" ]; then
+        wait -n 2>/dev/null || true
+        NEW_PIDS=()
+        for P in "${RUNNING_PIDS[@]}"; do
+            kill -0 "$P" 2>/dev/null && NEW_PIDS+=("$P")
+        done
+        RUNNING_PIDS=("${NEW_PIDS[@]}")
+    fi
 done
 
+for PID in "${RUNNING_PIDS[@]}"; do
+    wait "$PID" 2>/dev/null || true
+done
+
+echo ""
 echo "=========================================="
 echo "=== Launch Smoke Test Results           ==="
 echo "=========================================="
 echo ""
 
 FAILED=0
-for I in "${!VERSION_LIST[@]}"; do
-    VERSION="${VERSION_LIST[$I]}"
-    LOG_FILE="${LOG_FILES[$I]}"
+for ENTRY in "${LOG_FILES[@]}"; do
+    VERSION="${ENTRY%%:*}"
+    LOG_FILE="${ENTRY#*:}"
 
     if grep -q "BUILD FAILED" "$LOG_FILE" 2>/dev/null; then
         STATUS="FAIL"

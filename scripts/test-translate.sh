@@ -3,7 +3,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CONFIG_DIR="$PROJECT_DIR/run/config/live_voice_translate"
+
+ACTIVE_VERSION="$(cat "$PROJECT_DIR/.sc_active_version")"
+VERSION_RUN_DIR="$PROJECT_DIR/versions/$ACTIVE_VERSION/run"
+
+# Cache downloads in the root run dir, then sync to the active version
+CACHE_CONFIG_DIR="$PROJECT_DIR/run/config/live_voice_translate"
+CACHE_DEVTEST_DIR="$CACHE_CONFIG_DIR/devtest"
+
+CONFIG_DIR="$VERSION_RUN_DIR/config/live_voice_translate"
 DEVTEST_DIR="$CONFIG_DIR/devtest"
 
 RED='\033[0;31m'
@@ -25,6 +33,28 @@ echo "=================================="
 echo " Live Voice Chat Translate - Test"
 echo "=================================="
 
+# ── Parse arguments ──────────────────────────────────────
+CONCURRENT=1
+ADD_SOURCE=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -c|--concurrent)
+            CONCURRENT="$2"
+            shift 2
+            ;;
+        -*)
+            echo -e "${RED}Unknown option: $1${NC}"
+            echo "Usage: $0 [-c N] [url]"
+            exit 1
+            ;;
+        *)
+            ADD_SOURCE="$1"
+            shift
+            ;;
+    esac
+done
+
 # ── Check API key ──────────────────────────────────────
 if [ -z "${GEMINI_API_KEY:-}" ]; then
     if [ -f "$PROJECT_DIR/.env" ]; then
@@ -41,7 +71,7 @@ fi
 echo -e "${GREEN}✓ GEMINI_API_KEY set${NC}"
 
 # ── Ensure directories exist ────────────────────────────
-mkdir -p "$DEVTEST_DIR"
+mkdir -p "$CACHE_DEVTEST_DIR"
 
 # ── Read speech_files.txt ──────────────────────────────
 SPEECH_FILE="$SCRIPT_DIR/speech_files.txt"
@@ -60,7 +90,7 @@ if [ -f "$SPEECH_FILE" ]; then
         # Derive filename from URL basename, ensure uniqueness
         OUTPUT_NAME="$(basename "$URL")"
         OUTPUT_NAME="${OUTPUT_NAME%.*}.wav"
-        OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+        OUTPUT_PATH="$CACHE_DEVTEST_DIR/$OUTPUT_NAME"
 
         # Check if any variant of this file already exists (skip download)
         BASE="${OUTPUT_NAME%.wav}"
@@ -68,7 +98,7 @@ if [ -f "$SPEECH_FILE" ]; then
         if [ -f "$OUTPUT_PATH" ]; then
             already_had=true
         else
-            for f in "$DEVTEST_DIR/${BASE}"_*.wav; do
+            for f in "$CACHE_DEVTEST_DIR/${BASE}"_*.wav; do
                 if [ -f "$f" ]; then
                     already_had=true
                     break
@@ -84,11 +114,11 @@ if [ -f "$SPEECH_FILE" ]; then
         # Ensure unique filename (handle filename collisions)
         if [ -f "$OUTPUT_PATH" ]; then
             N=1
-            while [ -f "$DEVTEST_DIR/${BASE}_${N}.wav" ]; do
+            while [ -f "$CACHE_DEVTEST_DIR/${BASE}_${N}.wav" ]; do
                 N=$((N + 1))
             done
             OUTPUT_NAME="${BASE}_${N}.wav"
-            OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+            OUTPUT_PATH="$CACHE_DEVTEST_DIR/$OUTPUT_NAME"
         fi
 
         echo "  Downloading: $URL -> $OUTPUT_NAME"
@@ -122,60 +152,57 @@ if [ -f "$SPEECH_FILE" ]; then
 fi
 
 # ── Handle single URL argument (legacy) ──────────────────
-if [ $# -ge 1 ] && [ "$DOWNLOADED" -eq 0 ]; then
-    ADD_SOURCE="$1"
-
+if [ -n "$ADD_SOURCE" ] && [ "$DOWNLOADED" -eq 0 ]; then
     OUTPUT_NAME="$(basename "$ADD_SOURCE")"
     OUTPUT_NAME="${OUTPUT_NAME%.*}.wav"
-    OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+    OUTPUT_PATH="$CACHE_DEVTEST_DIR/$OUTPUT_NAME"
     if [ -f "$OUTPUT_PATH" ]; then
-        BASE="${OUTPUT_NAME%.wav}"
-        OUTPUT_NAME="${BASE}_1.wav"
-        OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
-    fi
-
-    TMPFILE=$(mktemp)
-    if [[ "$ADD_SOURCE" =~ ^https?:// ]]; then
-        echo "Downloading: $ADD_SOURCE"
-        if command -v curl &>/dev/null; then
-            curl -sL -o "$TMPFILE" "$ADD_SOURCE"
-        elif command -v wget &>/dev/null; then
-            wget -q -O "$TMPFILE" "$ADD_SOURCE"
-        else
-            echo -e "${RED}Need curl or wget${NC}"
-            rm -f "$TMPFILE"
-            exit 1
-        fi
-        ADD_SOURCE="$TMPFILE"
-    fi
-
-    if command -v ffmpeg &>/dev/null; then
-        echo "Converting to 48kHz 16-bit mono WAV..."
-        ffmpeg -y -i "$ADD_SOURCE" -ar 48000 -ac 1 -sample_fmt s16 "$OUTPUT_PATH" 2>/dev/null
-        echo -e "${GREEN}✓ Saved: $OUTPUT_PATH${NC}"
-        DOWNLOADED=$((DOWNLOADED + 1))
+        echo -e "${GREEN}  ✓ Already cached: $OUTPUT_NAME${NC}"
+        DOWNLOADED=1
     else
-        if [[ "$ADD_SOURCE" == *.wav ]]; then
-            cp "$ADD_SOURCE" "$OUTPUT_PATH"
-            echo -e "${YELLOW}⚠ No ffmpeg — copied as-is${NC}"
+        TMPFILE=$(mktemp)
+        if [[ "$ADD_SOURCE" =~ ^https?:// ]]; then
+            echo "Downloading: $ADD_SOURCE"
+            if command -v curl &>/dev/null; then
+                curl -sL -o "$TMPFILE" "$ADD_SOURCE"
+            elif command -v wget &>/dev/null; then
+                wget -q -O "$TMPFILE" "$ADD_SOURCE"
+            else
+                echo -e "${RED}Need curl or wget${NC}"
+                rm -f "$TMPFILE"
+                exit 1
+            fi
+            ADD_SOURCE="$TMPFILE"
+        fi
+
+        if command -v ffmpeg &>/dev/null; then
+            echo "Converting to 48kHz 16-bit mono WAV..."
+            ffmpeg -y -i "$ADD_SOURCE" -ar 48000 -ac 1 -sample_fmt s16 "$OUTPUT_PATH" 2>/dev/null
+            echo -e "${GREEN}✓ Saved: $OUTPUT_PATH${NC}"
             DOWNLOADED=$((DOWNLOADED + 1))
         else
-            echo -e "${RED}Need ffmpeg to convert non-WAV files${NC}"
-            exit 1
+            if [[ "$ADD_SOURCE" == *.wav ]]; then
+                cp "$ADD_SOURCE" "$OUTPUT_PATH"
+                echo -e "${YELLOW}⚠ No ffmpeg — copied as-is${NC}"
+                DOWNLOADED=$((DOWNLOADED + 1))
+            else
+                echo -e "${RED}Need ffmpeg to convert non-WAV files${NC}"
+                exit 1
+            fi
         fi
-    fi
 
-    if [[ "$1" =~ ^https?:// ]] && [ -f "$TMPFILE" ]; then
-        rm -f "$TMPFILE"
+        if [[ "$ADD_SOURCE" =~ ^https?:// ]] && [ -f "$TMPFILE" ]; then
+            rm -f "$TMPFILE"
+        fi
     fi
 fi
 
 # ── Show current test files ─────────────────────────────
-WAV_COUNT=$(find "$DEVTEST_DIR" -name '*.wav' 2>/dev/null | wc -l)
+WAV_COUNT=$(find "$CACHE_DEVTEST_DIR" -name '*.wav' 2>/dev/null | wc -l)
 
 if [ "$WAV_COUNT" -eq 0 ]; then
     echo ""
-    echo -e "${YELLOW}No WAV files in $DEVTEST_DIR${NC}"
+    echo -e "${YELLOW}No WAV files in $CACHE_DEVTEST_DIR${NC}"
     echo "  Create a speech list at:"
     echo "    $SPEECH_FILE"
     echo "  Format (one URL per line):"
@@ -183,11 +210,11 @@ if [ "$WAV_COUNT" -eq 0 ]; then
     echo "    https://example.com/speech_de.wav"
     echo ""
     echo "  Or place .wav files directly in:"
-    echo "    $DEVTEST_DIR"
+    echo "    $CACHE_DEVTEST_DIR"
 else
     echo ""
     echo -e "${GREEN}✓ $WAV_COUNT test file(s) ready:${NC}"
-    for f in "$DEVTEST_DIR"/*.wav; do
+    for f in "$CACHE_DEVTEST_DIR"/*.wav; do
         [ -f "$f" ] || continue
         BASENAME=$(basename "$f" .wav)
         DURATION="?"
@@ -196,6 +223,14 @@ else
         fi
         echo "    $BASENAME  (${DURATION}s)"
     done
+    echo ""
+    echo "  Syncing to: $DEVTEST_DIR"
+fi
+
+# ── Sync cached files to active version's run dir ────────
+if [ -d "$CACHE_DEVTEST_DIR" ]; then
+    mkdir -p "$DEVTEST_DIR"
+    cp -r "$CACHE_DEVTEST_DIR"/*.wav "$DEVTEST_DIR/" 2>/dev/null || true
 fi
 
 # ── Launch client with devtools ─────────────────────────
@@ -209,6 +244,8 @@ echo "  Connect to a server with Simple Voice Chat"
 echo ""
 
 cd "$PROJECT_DIR"
+
+export LIVE_VOICE_TRANSLATE_DEVTOOLS_CONCURRENT="$CONCURRENT"
 
 # Run Refresh active project with devtools to set active code
 ./gradlew "Refresh active project" -Plive_voice_translate.devtools=true > /dev/null 2>&1

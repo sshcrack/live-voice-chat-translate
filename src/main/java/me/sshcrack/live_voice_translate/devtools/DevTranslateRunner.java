@@ -39,7 +39,10 @@ public class DevTranslateRunner {
     private VoicechatClientApi api;
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> tickTask;
-    private final List<TestSource> sources = new ArrayList<>();
+    private final List<TestSource> allSources = new ArrayList<>();
+    private final List<TestSource> activeSources = new ArrayList<>();
+    private int maxConcurrent = Integer.MAX_VALUE;
+    private int nextPendingIdx = 0;
 
     public static DevTranslateRunner get() {
         if (INSTANCE == null) {
@@ -49,13 +52,26 @@ public class DevTranslateRunner {
     }
 
     public void onVoicechatConnected(VoicechatClientApi api) {
-        if (sources.size() > 0) {
+        if (allSources.size() > 0) {
             LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: test already running");
             return;
         }
         if (!ModConfig.get().isEnabled()) {
             LiveVoiceTranslate.LOGGER.warn("DevTranslateRunner: translation disabled in config");
             return;
+        }
+
+        int concurrent = maxConcurrent;
+        String envConcurrent = System.getenv("LIVE_VOICE_TRANSLATE_DEVTOOLS_CONCURRENT");
+        if (envConcurrent != null) {
+            try {
+                concurrent = Integer.parseInt(envConcurrent);
+            } catch (NumberFormatException e) {
+                LiveVoiceTranslate.LOGGER.warn("DevTranslateRunner: invalid concurrent env value '{}', using all", envConcurrent);
+            }
+        }
+        if (concurrent > 0 && concurrent < maxConcurrent) {
+            maxConcurrent = concurrent;
         }
 
         this.api = api;
@@ -69,24 +85,29 @@ public class DevTranslateRunner {
             for (Path wavPath : stream) {
                 TestSource source = loadSource(wavPath);
                 if (source != null) {
-                    sources.add(source);
+                    allSources.add(source);
                 }
             }
         } catch (IOException e) {
             LiveVoiceTranslate.LOGGER.error("DevTranslateRunner: failed to scan devtest directory", e);
         }
 
-        if (sources.isEmpty()) {
+        if (allSources.isEmpty()) {
             LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: no WAV files found in devtest directory");
             return;
         }
 
-        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded {} test source(s)", sources.size());
+        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded {} test source(s), maxConcurrent={}", allSources.size(), maxConcurrent);
 
         Position origin = api.createPosition(0, 0, 0);
-        for (TestSource source : sources) {
+        for (TestSource source : allSources) {
             source.channel = api.createLocationalAudioChannel(source.uuid, origin);
             source.channel.setDistance(CHANNEL_DISTANCE);
+        }
+
+        for (int i = 0; i < maxConcurrent && i < allSources.size(); i++) {
+            activeSources.add(allSources.get(i));
+            nextPendingIdx = i + 1;
         }
 
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -99,18 +120,31 @@ public class DevTranslateRunner {
         tickTask = scheduler.scheduleAtFixedRate(() -> {
             updatePositions();
 
+            int drainedCount = 0;
             boolean anyRemaining = false;
-            for (TestSource source : sources) {
+            for (int i = 0; i < activeSources.size(); i++) {
+                TestSource source = activeSources.get(i);
                 if (source.nextFrameIdx < source.totalFrames) {
                     feedFrame(source);
                     anyRemaining = true;
                 }
                 drainTranslated(source);
+                if (source.nextFrameIdx >= source.totalFrames && source.drained) {
+                    drainedCount++;
+                }
+            }
+
+            if (drainedCount > 0 && nextPendingIdx < allSources.size()) {
+                activeSources.removeIf(s -> s.nextFrameIdx >= s.totalFrames && s.drained);
+                while (activeSources.size() < maxConcurrent && nextPendingIdx < allSources.size()) {
+                    activeSources.add(allSources.get(nextPendingIdx++));
+                    anyRemaining = true;
+                }
             }
 
             if (!anyRemaining) {
                 boolean anyOutput = false;
-                for (TestSource source : sources) {
+                for (TestSource source : activeSources) {
                     short[] frame;
                     int played = 0;
                     while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
@@ -133,7 +167,7 @@ public class DevTranslateRunner {
             }
         }, 1000, FRAME_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
-        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: started feeding {} source(s)", sources.size());
+        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: started feeding {} source(s), {} active", allSources.size(), activeSources.size());
     }
 
     private void updatePositions() {
@@ -144,7 +178,7 @@ public class DevTranslateRunner {
         double py = player.getY() + EAR_HEIGHT;
         double pz = player.getZ();
 
-        int count = sources.size();
+        int count = allSources.size();
         for (int i = 0; i < count; i++) {
             double angle = 2 * Math.PI * i / count;
             Position pos = api.createPosition(
@@ -152,7 +186,7 @@ public class DevTranslateRunner {
                 py,
                 pz + SOURCE_RADIUS * Math.cos(angle)
             );
-            sources.get(i).channel.setLocation(pos);
+            allSources.get(i).channel.setLocation(pos);
         }
     }
 
@@ -170,8 +204,13 @@ public class DevTranslateRunner {
 
     private void drainTranslated(TestSource source) {
         short[] frame;
+        boolean hadAny = false;
         while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
             source.channel.play(frame);
+            hadAny = true;
+        }
+        if (source.nextFrameIdx >= source.totalFrames && !hadAny) {
+            source.drained = true;
         }
     }
 
@@ -188,11 +227,13 @@ public class DevTranslateRunner {
             scheduler.shutdown();
             scheduler = null;
         }
-        for (TestSource source : sources) {
+        for (TestSource source : allSources) {
             TranslationManager.get().onPlayerSilence(source.uuid);
         }
-        int count = sources.size();
-        sources.clear();
+        int count = allSources.size();
+        allSources.clear();
+        activeSources.clear();
+        nextPendingIdx = 0;
         api = null;
         LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: stopped, cleaned up {} source(s)", count);
     }
@@ -236,6 +277,7 @@ public class DevTranslateRunner {
         final short[] pcm;
         final int totalFrames;
         int nextFrameIdx;
+        boolean drained;
         ClientLocationalAudioChannel channel;
 
         TestSource(UUID uuid, String name, String language, short[] pcm, int totalFrames) {
@@ -245,6 +287,7 @@ public class DevTranslateRunner {
             this.pcm = pcm;
             this.totalFrames = totalFrames;
             this.nextFrameIdx = 0;
+            this.drained = false;
         }
     }
 }
