@@ -10,5 +10,5 @@
 https://mc.sshcrack.me/voice_examples/cut_french.wav
 https://mc.sshcrack.me/voice_examples/cut_german.wav
 https://mc.sshcrack.me/voice_examples/cut_italian.wav
-https://mc.sshcrack.me/voice_examples/cut_japanese.wav
-https://mc.sshcrack.me/voice_examples/cut_spanish.wav
+#https://mc.sshcrack.me/voice_examples/cut_japanese.wav
+#https://mc.sshcrack.me/voice_examples/cut_spanish.wav
