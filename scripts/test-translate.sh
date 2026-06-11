@@ -61,8 +61,28 @@ if [ -f "$SPEECH_FILE" ]; then
         OUTPUT_NAME="$(basename "$URL")"
         OUTPUT_NAME="${OUTPUT_NAME%.*}.wav"
         OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+
+        # Check if any variant of this file already exists (skip download)
+        BASE="${OUTPUT_NAME%.wav}"
+        already_had=false
         if [ -f "$OUTPUT_PATH" ]; then
-            BASE="${OUTPUT_NAME%.wav}"
+            already_had=true
+        else
+            for f in "$DEVTEST_DIR/${BASE}"_*.wav; do
+                if [ -f "$f" ]; then
+                    already_had=true
+                    break
+                fi
+            done
+        fi
+
+        if [ "$already_had" = true ]; then
+            echo -e "${GREEN}  ✓ Already cached: $OUTPUT_NAME${NC}"
+            continue
+        fi
+
+        # Ensure unique filename (handle filename collisions)
+        if [ -f "$OUTPUT_PATH" ]; then
             N=1
             while [ -f "$DEVTEST_DIR/${BASE}_${N}.wav" ]; do
                 N=$((N + 1))

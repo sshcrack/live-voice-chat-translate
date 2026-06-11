@@ -1,5 +1,5 @@
 /*? if devtools {*/
-package me.sshcrack.live_voice_translate.devtools;
+/*package me.sshcrack.live_voice_translate.devtools;
 
 import de.maxhenkel.voicechat.api.Position;
 import de.maxhenkel.voicechat.api.VoicechatClientApi;
@@ -236,4 +236,4 @@ public class DevTranslateRunner {
         }
     }
 }
-/*?}*/
+*//*?}*/
