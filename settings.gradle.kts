@@ -1,27 +1,43 @@
 pluginManagement {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        gradlePluginPortal()
-        maven("https://maven.fabricmc.net/")
-        maven("https://maven.kikugie.dev/releases") { name = "KikuGie Releases" }
-        maven("https://maven.kikugie.dev/snapshots") { name = "KikuGie Snapshots" }
-    }
+	repositories {
+		mavenLocal()
+		mavenCentral()
+		gradlePluginPortal()
+		maven("https://maven.fabricmc.net/") { name = "Fabric" }
+		maven("https://maven.neoforged.net/releases/") { name = "NeoForged" }
+		maven("https://maven.kikugie.dev/snapshots") { name = "KikuGie Snapshots" }
+		maven("https://maven.kikugie.dev/releases") { name = "KikuGie Releases" }
+		maven("https://maven.parchmentmc.org") { name = "ParchmentMC" }
+	}
+	includeBuild("build-logic")
 }
 
 plugins {
-    id("dev.kikugie.stonecutter") version "0.9.4"
-    id("dev.kikugie.loom-back-compat") version "0.3"
-    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+	id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+	id("dev.kikugie.stonecutter") version "0.9.2"
 }
 
 stonecutter {
-    create(rootProject) {
-        // See https://stonecutter.kikugie.dev/wiki/start/#choosing-minecraft-versions
-        versions("1.21.1", "1.21.11")
-        version("26.1", "26.1.2")
-        vcsVersion = "26.1"
-    }
+	create(rootProject) {
+		fun match(version: String, vararg loaders: String) =
+			loaders.forEach { version("$version-$it", version).buildscript = getBuildscript(it, version) }
+
+		match("26.1.2", "fabric", "neoforge")
+		match("1.21.7", "fabric", "neoforge")
+		match("1.21.1", "fabric", "neoforge")
+		match("1.19.2", "fabric", "forge")
+
+		vcsVersion = "1.21.7-fabric"
+	}
 }
 
-rootProject.name = "Template"
+private fun getBuildscript(loader: String, version: String): String {
+	if (loader == "fabric") {
+		return if (version.startsWith("1.")) {
+			"build.fabric-o.gradle.kts"
+		} else {
+			"build.fabric-m.gradle.kts"
+		}
+	}
+	return "build.$loader.gradle.kts"
+}
