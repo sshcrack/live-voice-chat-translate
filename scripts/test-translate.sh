@@ -13,7 +13,7 @@ NC='\033[0m'
 
 cleanup() {
     echo ""
-    echo "Clearing up..."
+    echo "Cleaning up..."
     cd "$PROJECT_DIR" 2>/dev/null
     ./gradlew "Refresh active project" > /dev/null 2>&1 || true
     echo "Done"
