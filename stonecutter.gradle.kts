@@ -42,3 +42,17 @@ for (version in stonecutter.versions.map { it.version }.distinct()) tasks.regist
 	group = "publishing"
 	dependsOn(stonecutter.tasks.named("publishMods") { metadata.version == version })
 }
+
+stonecutter tasks {
+	val ordering = versionComparator.thenComparingInt { task ->
+		if (task.metadata.project.endsWith("fabric")) 1 else 0
+	}
+
+	listOf("publishModrinth", "publishCurseforge").forEach { taskName ->
+		gradle.allprojects {
+			if (project.tasks.findByName(taskName) != null) {
+				order(taskName, ordering)
+			}
+		}
+	}
+}

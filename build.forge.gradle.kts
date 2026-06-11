@@ -1,5 +1,6 @@
 plugins {
 	id("mod-platform")
+	id("maven-publish")
 	id("net.neoforged.moddev.legacyforge")
 }
 
@@ -52,6 +53,34 @@ legacyForge {
 	mods {
 		register(prop("mod.id")) {
 			sourceSet(sourceSets["main"])
+		}
+	}
+}
+
+var forgeLoader = sc.current.component1().split("-")[1];
+publishing {
+	publications {
+		create<MavenPublication>("maven") {
+			groupId = "me.sshcrack"
+			artifactId = prop("mod.id")
+			version = "${prop("mod.version")}${prop("mod.channel_tag")}-${prop("deps.minecraft")}-${forgeLoader}"
+
+			artifact(tasks.named("jar"))
+			tasks.findByName("sourcesJar")?.let { artifact(it) }
+		}
+	}
+
+	repositories {
+		maven {
+			name = "sshcrackRepository"
+			url = uri("https://maven.sshcrack.me/releases")
+
+			credentials {
+				username = (findProperty("sshcrackRepoMavenUser") as String?)
+					?: System.getenv("sshcrackRepoMavenUser")
+				password = (findProperty("sshcrackRepoMavenPassword") as String?)
+					?: System.getenv("sshcrackRepoMavenPassword")
+			}
 		}
 	}
 }
