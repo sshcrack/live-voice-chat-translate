@@ -1,17 +1,16 @@
 /*? if devtools {*/
 package me.sshcrack.live_voice_translate.devtools;
 
+import de.maxhenkel.voicechat.api.Position;
 import de.maxhenkel.voicechat.api.VoicechatClientApi;
-import de.maxhenkel.voicechat.api.audiochannel.ClientStaticAudioChannel;
+import de.maxhenkel.voicechat.api.audiochannel.ClientLocationalAudioChannel;
 import me.sshcrack.live_voice_translate.AudioResampler;
 import me.sshcrack.live_voice_translate.LiveVoiceTranslate;
 import me.sshcrack.live_voice_translate.ModConfig;
 import me.sshcrack.live_voice_translate.TranslationManager;
+import net.minecraft.client.Minecraft;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URLConnection;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +32,9 @@ public class DevTranslateRunner {
     private static final int FRAME_SIZE = 960;
     private static final long FRAME_INTERVAL_MS = 20;
     private static final long DRAIN_TIMEOUT_MS = 5000;
+    private static final float CHANNEL_DISTANCE = 32.0f;
+    private static final double SOURCE_RADIUS = 4.0;
+    private static final double EAR_HEIGHT = 1.5;
 
     private VoicechatClientApi api;
     private ScheduledExecutorService scheduler;
@@ -81,8 +83,10 @@ public class DevTranslateRunner {
 
         LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded {} test source(s)", sources.size());
 
+        Position origin = api.createPosition(0, 0, 0);
         for (TestSource source : sources) {
-            source.channel = api.createStaticAudioChannel(source.uuid);
+            source.channel = api.createLocationalAudioChannel(source.uuid, origin);
+            source.channel.setDistance(CHANNEL_DISTANCE);
         }
 
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -93,6 +97,8 @@ public class DevTranslateRunner {
 
         AtomicInteger idleCounter = new AtomicInteger();
         tickTask = scheduler.scheduleAtFixedRate(() -> {
+            updatePositions();
+
             boolean anyRemaining = false;
             for (TestSource source : sources) {
                 if (source.nextFrameIdx < source.totalFrames) {
@@ -122,6 +128,26 @@ public class DevTranslateRunner {
         }, 1000, FRAME_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
         LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: started feeding {} source(s)", sources.size());
+    }
+
+    private void updatePositions() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return;
+
+        double px = player.getX();
+        double py = player.getY() + EAR_HEIGHT;
+        double pz = player.getZ();
+
+        int count = sources.size();
+        for (int i = 0; i < count; i++) {
+            double angle = 2 * Math.PI * i / count;
+            Position pos = api.createPosition(
+                px + SOURCE_RADIUS * Math.sin(angle),
+                py,
+                pz + SOURCE_RADIUS * Math.cos(angle)
+            );
+            sources.get(i).channel.setLocation(pos);
+        }
     }
 
     private void feedFrame(TestSource source) {
@@ -199,7 +225,7 @@ public class DevTranslateRunner {
         final short[] pcm;
         final int totalFrames;
         int nextFrameIdx;
-        ClientStaticAudioChannel channel;
+        ClientLocationalAudioChannel channel;
 
         TestSource(UUID uuid, String language, short[] pcm, int totalFrames) {
             this.uuid = uuid;

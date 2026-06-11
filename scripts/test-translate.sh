@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DEVTEST_DIR="$PROJECT_DIR/run/config/live_voice_translate/devtest"
+CONFIG_DIR="$PROJECT_DIR/run/config/live_voice_translate"
+DEVTEST_DIR="$CONFIG_DIR/devtest"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,21 +30,70 @@ if [ -z "${GEMINI_API_KEY:-}" ]; then
 fi
 echo -e "${GREEN}✓ GEMINI_API_KEY set${NC}"
 
-# ── Handle URL/file argument ────────────────────────────
-ADD_SOURCE=""
-if [ $# -ge 1 ]; then
-    ADD_SOURCE="$1"
+# ── Ensure directories exist ────────────────────────────
+mkdir -p "$DEVTEST_DIR"
+
+# ── Read speech_files.txt ──────────────────────────────
+SPEECH_FILE="$SCRIPT_DIR/speech_files.txt"
+DOWNLOADED=0
+
+if [ -f "$SPEECH_FILE" ]; then
+    echo "Reading: $SPEECH_FILE"
+    while IFS='|' read -r URL LANG REST; do
+        # Trim whitespace
+        URL="$(echo "$URL" | xargs)"
+        LANG="$(echo "$LANG" | xargs)"
+
+        # Skip comments and empty lines
+        [[ -z "$URL" ]] && continue
+        [[ "$URL" == \#* ]] && continue
+
+        # Default language
+        if [ -z "$LANG" ]; then
+            LANG="en"
+        fi
+
+        OUTPUT_NAME="speech_${LANG}.wav"
+        OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+
+        echo "  [${LANG}] Downloading: $URL"
+
+        TMPFILE=$(mktemp)
+        if command -v curl &>/dev/null; then
+            curl -sL -o "$TMPFILE" "$URL" || { echo -e "${RED}  Failed to download${NC}"; rm -f "$TMPFILE"; continue; }
+        elif command -v wget &>/dev/null; then
+            wget -q -O "$TMPFILE" "$URL" || { echo -e "${RED}  Failed to download${NC}"; rm -f "$TMPFILE"; continue; }
+        else
+            echo -e "${RED}  Need curl or wget${NC}"
+            rm -f "$TMPFILE"
+            continue
+        fi
+
+        if command -v ffmpeg &>/dev/null; then
+            ffmpeg -y -i "$TMPFILE" -ar 48000 -ac 1 -sample_fmt s16 "$OUTPUT_PATH" 2>/dev/null
+            echo -e "${GREEN}  ✓ Saved: $OUTPUT_PATH${NC}"
+            DOWNLOADED=$((DOWNLOADED + 1))
+        else
+            if [[ "$URL" == *.wav ]]; then
+                cp "$TMPFILE" "$OUTPUT_PATH"
+                echo -e "${YELLOW}  ⚠ No ffmpeg — copied as-is (must be 48kHz 16-bit mono)${NC}"
+                DOWNLOADED=$((DOWNLOADED + 1))
+            else
+                echo -e "${RED}  Need ffmpeg to convert non-WAV files${NC}"
+            fi
+        fi
+        rm -f "$TMPFILE"
+    done < "$SPEECH_FILE"
 fi
 
-if [ -n "$ADD_SOURCE" ]; then
-    mkdir -p "$DEVTEST_DIR"
-
-    # Extract target language from second arg, or from URL name
+# ── Handle single URL argument (legacy) ──────────────────
+if [ $# -ge 1 ] && [ "$DOWNLOADED" -eq 0 ]; then
+    ADD_SOURCE="$1"
     TARGET_LANG="${2:-}"
+
     if [ -z "$TARGET_LANG" ]; then
         BASENAME="$(basename "$ADD_SOURCE")"
         BASENAME="${BASENAME%.*}"
-        # Try to extract language code (e.g., "speech_fr.mp3" -> "fr")
         if [[ "$BASENAME" =~ _([a-z]{2}(-[a-zA-Z0-9]+)?)$ ]]; then
             TARGET_LANG="${BASH_REMATCH[1]}"
         else
@@ -51,78 +101,78 @@ if [ -n "$ADD_SOURCE" ]; then
         fi
     fi
 
-    # Determine output filename
     OUTPUT_NAME="speech_${TARGET_LANG}.wav"
     OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
 
+    TMPFILE=$(mktemp)
     if [[ "$ADD_SOURCE" =~ ^https?:// ]]; then
         echo "Downloading: $ADD_SOURCE"
-        TMPFILE=$(mktemp)
         if command -v curl &>/dev/null; then
             curl -sL -o "$TMPFILE" "$ADD_SOURCE"
         elif command -v wget &>/dev/null; then
             wget -q -O "$TMPFILE" "$ADD_SOURCE"
         else
-            echo -e "${RED}ERROR: need curl or wget to download URLs${NC}"
+            echo -e "${RED}Need curl or wget${NC}"
             rm -f "$TMPFILE"
             exit 1
         fi
         ADD_SOURCE="$TMPFILE"
-        # We'll clean up after conversion
     fi
 
     if command -v ffmpeg &>/dev/null; then
         echo "Converting to 48kHz 16-bit mono WAV..."
         ffmpeg -y -i "$ADD_SOURCE" -ar 48000 -ac 1 -sample_fmt s16 "$OUTPUT_PATH" 2>/dev/null
         echo -e "${GREEN}✓ Saved: $OUTPUT_PATH${NC}"
+        DOWNLOADED=$((DOWNLOADED + 1))
     else
-        # No ffmpeg: hope it's already a 48kHz WAV
         if [[ "$ADD_SOURCE" == *.wav ]]; then
             cp "$ADD_SOURCE" "$OUTPUT_PATH"
-            echo -e "${YELLOW}⚠ No ffmpeg found — copied as-is (must be 48kHz 16-bit mono WAV)${NC}"
+            echo -e "${YELLOW}⚠ No ffmpeg — copied as-is${NC}"
+            DOWNLOADED=$((DOWNLOADED + 1))
         else
-            echo -e "${RED}ERROR: need ffmpeg to convert non-WAV files${NC}"
-            echo "  Install ffmpeg or convert manually:"
-            echo "  ffmpeg -i input.mp3 -ar 48000 -ac 1 -sample_fmt s16 output.wav"
+            echo -e "${RED}Need ffmpeg to convert non-WAV files${NC}"
             exit 1
         fi
     fi
 
-    # Clean up temp file
-    if [[ "$1" =~ ^https?:// ]] && [ -f "${ADD_SOURCE:-}" ]; then
-        rm -f "$ADD_SOURCE"
+    if [[ "$1" =~ ^https?:// ]] && [ -f "$TMPFILE" ]; then
+        rm -f "$TMPFILE"
     fi
 fi
 
-# ── Create devtest directory and show current files ────
-mkdir -p "$DEVTEST_DIR"
+# ── Show current test files ─────────────────────────────
 WAV_COUNT=$(find "$DEVTEST_DIR" -name '*.wav' 2>/dev/null | wc -l)
 
 if [ "$WAV_COUNT" -eq 0 ]; then
     echo ""
-    echo -e "${YELLOW}No WAV files found in devtest directory.${NC}"
-    echo "  Place .wav files (48kHz 16-bit mono PCM) in:"
+    echo -e "${YELLOW}No WAV files in $DEVTEST_DIR${NC}"
+    echo "  Create a speech list at:"
+    echo "    $SPEECH_FILE"
+    echo "  Format (one per line):"
+    echo "    https://example.com/audio.wav|fr"
+    echo "    https://example.com/speech.wav|de"
+    echo ""
+    echo "  Or place .wav files directly in:"
     echo "    $DEVTEST_DIR"
     echo ""
-    echo "  Naming convention for language detection:"
-    echo "    speech_fr.wav  → translates to French"
-    echo "    speech_de.wav  → translates to German"
-    echo "    speech.wav     → translates to English (default)"
-    echo ""
-    echo "  Or use this script to add a source:"
-    echo "    $0 <url_or_file> [language_code]"
+    echo "  Language is detected from filename:"
+    echo "    speech_fr.wav → French    speech_de.wav → German"
+    echo "    speech.wav    → English (default)"
 else
-    echo -e "${GREEN}✓ $WAV_COUNT test file(s) ready${NC}"
-    ls -1 "$DEVTEST_DIR"/*.wav 2>/dev/null | while read f; do
+    echo ""
+    echo -e "${GREEN}✓ $WAV_COUNT test file(s) ready:${NC}"
+    for f in "$DEVTEST_DIR"/*.wav; do
+        [ -f "$f" ] || continue
         BASENAME=$(basename "$f" .wav)
-        LANG=""
+        LANG="en"
         if [[ "$BASENAME" =~ _([a-z]{2}(-[a-zA-Z0-9]+)?)$ ]]; then
             LANG="${BASH_REMATCH[1]}"
-        else
-            LANG="en"
         fi
-        DUR=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$f" 2>/dev/null || echo "?")
-        echo "    $BASENAME → ${LANG} (${DUR}s)"
+        DURATION="?"
+        if command -v ffprobe &>/dev/null; then
+            DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$f" 2>/dev/null || echo "?")
+        fi
+        echo "    $BASENAME → ${LANG}  (${DURATION}s)"
     done
 fi
 
@@ -131,6 +181,9 @@ echo ""
 echo "=================================="
 echo " Launching Minecraft with devtools"
 echo "=================================="
+echo ""
+echo "  Audio sources will play around you in-game"
+echo "  Connect to a server with Simple Voice Chat"
 echo ""
 
 cd "$PROJECT_DIR"

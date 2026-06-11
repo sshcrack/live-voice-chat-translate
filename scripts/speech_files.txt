@@ -1,0 +1,10 @@
+# Test audio sources for devtools translation test.
+# Format: <url_or_filepath>|<language_code>
+# Language codes are BCP-47 (e.g. en, fr, de, ja, es, zh-CN)
+#
+# Add URLs to WAV or MP3 files. ffmpeg is used to convert to 48kHz mono WAV.
+# You need a GEMINI_API_KEY environment variable set.
+
+# https://example.com/speech_fr.wav|fr
+# https://example.com/speech_de.wav|de
+# https://example.com/speech_ja.wav|ja
