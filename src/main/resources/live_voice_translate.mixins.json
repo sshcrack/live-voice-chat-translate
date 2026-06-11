@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.example.mixin",
+  "package": "me.sshcrack.live_voice_translate.mixin",
   "compatibilityLevel": "${java}",
   "mixins": [
     "ExampleMixin"

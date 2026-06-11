@@ -1,7 +1,7 @@
 # See https://stonecutter.kikugie.dev/wiki/config/properties#centralized-properties
-mod.id = "template"
-mod.name = "Template"
-mod.group = "com.example"
+mod.id = "live_voice_translate"
+mod.name = "Live Voice Chat Translate"
+mod.group = "me.sshcrack.live_voice_translate"
 mod.version = "0.1.0"
 
 deps.fabric_loader = "0.19.2"

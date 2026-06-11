@@ -8,7 +8,7 @@ stonecutter active "26.1"
 stonecutter parameters {
     swaps["mod_version"] = "\"${property("mod.version")}\";"
     swaps["minecraft"] = "\"${node.metadata.version}\";"
-    constants["release"] = property("mod.id") != "template"
+    constants["release"] = property("mod.id") != "live_voice_translate"
     dependencies["fapi"] = node.project.property("deps.fabric_api") as String
 
     replacements {

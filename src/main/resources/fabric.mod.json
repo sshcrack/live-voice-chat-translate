@@ -3,26 +3,26 @@
   "id": "${id}",
   "version": "${version}",
   "name": "${name}",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "description": "A mod that translates voice chat in real-time.",
   "authors": [
-    "Me!"
+    "sshcrack"
   ],
   "contact": {
-    "homepage": "https://stonecutter.kikugie.dev/",
-    "sources": "https://codeberg.org/stonecutter/template-fabric"
+    "homepage": "https://modrinth.com/mod/live-voice-chat-translate",
+    "sources": "https://github.com/sshcrack/live-voice-chat-translate"
   },
-  "license": "CC0-1.0",
-  "icon": "assets/template/icon.png",
+  "license": "MIT",
+  "icon": "assets/live_voice_translate/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.example.TemplateMod"
+      "me.sshcrack.live_voice_translate.LiveVoiceTranslate"
     ]
   },
   "mixins": [
-    "template.mixins.json"
+    "live_voice_translate.mixins.json"
   ],
-  "accessWidener": "template.ct",
+  "accessWidener": "live_voice_translate.ct",
   "depends": {
     "fabricloader": ">=0.17",
     "minecraft": "${minecraft}"
