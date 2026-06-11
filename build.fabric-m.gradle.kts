@@ -68,4 +68,5 @@ dependencies {
 		runtimeOnly("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}:fabric-stub")
 		implementation("maven.modrinth:simple-voice-chat:fabric-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
 	}
+	runtimeOnly("net.fabricmc.fabric-api:fabric-api:${prop("deps.fabric_api")}")
 }

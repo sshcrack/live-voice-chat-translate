@@ -22,36 +22,47 @@ deps.fabric-loader = "0.16.10"
 
 [fabric."1.16.5"]
 deps.minecraft = "1.16.5"
+deps.fabric_api = "0.42.0+1.16"
 
 [fabric."1.18.2"]
 deps.minecraft = "1.18.2"
+deps.fabric_api = "0.77.0+1.18.2"
 
 [fabric."1.19.2"]
 deps.minecraft = "1.19.2"
+deps.fabric_api = "0.77.0+1.19.2"
 
 [fabric."1.20.1"]
 deps.minecraft = "1.20.1"
+deps.fabric_api = "0.92.9+1.20.1"
 
 [fabric."1.21.1"]
 deps.minecraft = "1.21.1"
+deps.fabric_api = "0.116.12+1.21.1"
 
 [fabric."1.21.4"]
 deps.minecraft = "1.21.4"
+deps.fabric_api = "0.119.4+1.21.4"
 
 [fabric."1.21.5"]
 deps.minecraft = "1.21.5"
+deps.fabric_api = "0.128.2+1.21.5"
 
 [fabric."1.21.8"]
 deps.minecraft = "1.21.8"
+deps.fabric_api = "0.136.1+1.21.8"
 
 [fabric."1.21.10"]
 deps.minecraft = "1.21.10"
+deps.fabric_api = "0.138.4+1.21.10"
 
 [fabric."1.21.11"]
 deps.minecraft = "1.21.11"
+deps.fabric_api = "0.141.4+1.21.11"
 
 [fabric."26.1.2"]
 deps.minecraft = "26.1.2"
+deps.fabric_api = "0.151.0+26.1.2"
 
 [forge]
 
