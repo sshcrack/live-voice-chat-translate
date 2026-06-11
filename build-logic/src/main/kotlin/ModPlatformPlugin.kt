@@ -22,6 +22,8 @@ import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import javax.inject.Inject
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
+import xyz.wagyourtail.jvmdg.gradle.task.ShadeJar
 
 val Project.sc: StonecutterBuildExtension
 	get() = extensions.getByType<StonecutterBuildExtension>()
@@ -90,7 +92,7 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 
 		if (ctx.loader.isFabricLike) {
 			ctx.extension.dependencies {
-				required("java") { fabricLikeVersionRange = ">=${ctx.javaVersion.majorVersion}" }
+				required("java") { fabricLikeVersionRange = ">=${ctx.targetJavaVersion.majorVersion}" }
 			}
 		}
 
@@ -100,6 +102,7 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 		configureIdea()
 		configureProcessResources(ctx)
 		configureJava(ctx)
+		configureDowngrade(ctx)
 		registerBuildAndCollectTask(ctx)
 
 		configureModPublishing(ctx)
@@ -112,15 +115,11 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 	private fun Project.configureJava(ctx: Context) {
 		extensions.configure<JavaPluginExtension>("java") {
 			withSourcesJar()
-			withJavadocJar()
 			sourceCompatibility = ctx.javaVersion
 			targetCompatibility = ctx.javaVersion
 			toolchain {
 				languageVersion = JavaLanguageVersion.of(ctx.javaVersion.majorVersion.toInt())
 			}
-		}
-		tasks.matching { it.name == "javadoc" }.configureEach {
-			(this as org.gradle.external.javadoc.StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
 		}
 	}
 
@@ -177,13 +176,38 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 		}
 	}
 
+	private fun Project.configureDowngrade(ctx: Context) {
+		if (!ctx.needsDowngrade) return
+
+		apply(plugin = "xyz.wagyourtail.jvmdowngrader")
+
+		val jarTaskName = ctx.extension.jarTask.get()
+		tasks.register("downgradeModJar", DowngradeJar::class.java) {
+			val jarTask = tasks.named(jarTaskName, Jar::class.java)
+			inputFile.set(jarTask.flatMap { it.archiveFile })
+			archiveClassifier.set("downgraded")
+			downgradeTo.set(ctx.targetJavaVersion)
+		}
+
+		tasks.register("shadeModJar", ShadeJar::class.java) {
+			val dgTask = tasks.named("downgradeModJar", DowngradeJar::class.java)
+			inputFile.set(dgTask.flatMap { it.archiveFile })
+			archiveClassifier.set("")
+			downgradeTo.set(ctx.targetJavaVersion)
+			shadeInlining.set(true)
+		}
+	}
+
 	private fun Project.registerBuildAndCollectTask(ctx: Context) {
 		tasks.register<Copy>("buildAndCollect") {
-			from(
-				tasks.named(ctx.extension.jarTask.get()),
-				tasks.named(ctx.extension.sourcesJarTask.get()),
-				tasks.named("javadocJar")
-			)
+			val jarSrc = if (ctx.needsDowngrade) {
+				dependsOn("shadeModJar")
+				tasks.named("shadeModJar")
+			} else {
+				tasks.named(ctx.extension.jarTask.get())
+			}
+			from(jarSrc)
+			from(tasks.named(ctx.extension.sourcesJarTask.get()))
 			into(rootProject.layout.buildDirectory.file("libs/${ctx.basicVersion}"))
 			dependsOn("build")
 			group = "build"

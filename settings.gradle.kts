@@ -8,6 +8,7 @@ pluginManagement {
 		maven("https://maven.kikugie.dev/snapshots") { name = "KikuGie Snapshots" }
 		maven("https://maven.kikugie.dev/releases") { name = "KikuGie Releases" }
 		maven("https://maven.parchmentmc.org") { name = "ParchmentMC" }
+		maven("https://maven.wagyourtail.xyz/releases") { name = "WagYourMaven" }
 	}
 	includeBuild("build-logic")
 }

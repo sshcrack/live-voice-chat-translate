@@ -20,6 +20,7 @@ repositories {
 	maven("https://maven.kikugie.dev/snapshots") { name = "KikuGie Snapshots" }
 	maven("https://maven.kikugie.dev/releases") { name = "KikuGie Releases" }
 	maven("https://jitpack.io") { name = "Jitpack" }
+	maven("https://maven.wagyourtail.xyz/releases") { name = "WagYourMaven" }
 }
 
 dependencies {
@@ -31,4 +32,5 @@ dependencies {
 	implementation(libs.vanniktech.maven.publish)
 	implementation(libs.serialization.json)
 	implementation(libs.serialization.toml)
+	implementation("xyz.wagyourtail.jvmdowngrader:xyz.wagyourtail.jvmdowngrader.gradle.plugin:1.3.6")
 }
