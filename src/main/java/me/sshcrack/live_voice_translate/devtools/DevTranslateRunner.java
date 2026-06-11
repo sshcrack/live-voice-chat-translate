@@ -112,14 +112,20 @@ public class DevTranslateRunner {
                 boolean anyOutput = false;
                 for (TestSource source : sources) {
                     short[] frame;
+                    int played = 0;
                     while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
                         source.channel.play(frame);
                         anyOutput = true;
+                        played++;
+                    }
+                    if (played > 0) {
+                        LiveVoiceTranslate.LOGGER.info("[DevTools] Played {} translated frame(s) for source '{}'", played, source.name);
                     }
                 }
                 if (anyOutput) {
                     idleCounter.set(0);
                 } else if (idleCounter.incrementAndGet() >= DRAIN_TIMEOUT_MS / 500) {
+                    LiveVoiceTranslate.LOGGER.info("[DevTools] All sources drained, stopping");
                     stop();
                 }
             } else {
@@ -154,6 +160,8 @@ public class DevTranslateRunner {
         int start = source.nextFrameIdx * FRAME_SIZE;
         int end = Math.min(start + FRAME_SIZE, source.pcm.length);
         short[] frame = Arrays.copyOfRange(source.pcm, start, end);
+        LiveVoiceTranslate.LOGGER.debug("[DevTools] Feeding frame {}/{} for '{}' ({} samples)",
+            source.nextFrameIdx + 1, source.totalFrames, source.name, frame.length);
         TranslationManager.get().feedAudio(source.uuid, frame);
         source.nextFrameIdx++;
     }
@@ -210,9 +218,9 @@ public class DevTranslateRunner {
             int totalFrames = (int) Math.ceil((double) pcm.length / FRAME_SIZE);
 
             double duration = pcm.length / 48000.0;
-            LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded '{}' (lang={}, {}s, {} frames)", filename, lang, String.format("%.1f", duration), totalFrames);
+            LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded '{}' (lang={}, {}s, {} frames, uuid={})", filename, lang, String.format("%.1f", duration), totalFrames, uuid);
 
-            return new TestSource(uuid, lang, pcm, totalFrames);
+            return new TestSource(uuid, base, lang, pcm, totalFrames);
         } catch (IOException e) {
             LiveVoiceTranslate.LOGGER.error("DevTranslateRunner: failed to load {}", wavPath, e);
             return null;
@@ -221,14 +229,16 @@ public class DevTranslateRunner {
 
     private static class TestSource {
         final UUID uuid;
+        final String name;
         final String language;
         final short[] pcm;
         final int totalFrames;
         int nextFrameIdx;
         ClientLocationalAudioChannel channel;
 
-        TestSource(UUID uuid, String language, short[] pcm, int totalFrames) {
+        TestSource(UUID uuid, String name, String language, short[] pcm, int totalFrames) {
             this.uuid = uuid;
+            this.name = name;
             this.language = language;
             this.pcm = pcm;
             this.totalFrames = totalFrames;

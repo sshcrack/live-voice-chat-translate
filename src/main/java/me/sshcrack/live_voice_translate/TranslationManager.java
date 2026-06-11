@@ -50,12 +50,15 @@ public class TranslationManager {
         try {
             session = activeSessions.get(playerId);
             if (session == null) {
+                LiveVoiceTranslate.LOGGER.info("[TM] New session for player {} ({} open sockets, {} pending)",
+                    playerId, openSocketCount, pendingQueue.size());
                 session = new PlayerTranslateSession(playerId, apiKey, targetLanguage);
                 activeSessions.put(playerId, session);
                 if (openSocketCount < maxSockets) {
                     session.connect();
                     openSocketCount++;
                 } else {
+                    LiveVoiceTranslate.LOGGER.info("[TM] Queuing session {} (max {} sockets reached)", playerId, maxSockets);
                     pendingQueue.add(session);
                 }
             }
@@ -86,6 +89,7 @@ public class TranslationManager {
                 session.close();
                 if (wasConnected) {
                     openSocketCount--;
+                    LiveVoiceTranslate.LOGGER.info("[TM] Closed session {} ({} open sockets remaining)", playerId, openSocketCount);
                 }
                 promoteNext();
             }
@@ -97,6 +101,7 @@ public class TranslationManager {
     private void promoteNext() {
         PlayerTranslateSession next = pendingQueue.poll();
         if (next != null) {
+            LiveVoiceTranslate.LOGGER.info("[TM] Promoting pending session {} ({} open sockets)", next.getPlayerId(), openSocketCount);
             next.connect();
             openSocketCount++;
         }
