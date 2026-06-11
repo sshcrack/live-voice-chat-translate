@@ -128,12 +128,20 @@ sealed class Loader(val id: String) {
 		override val jarTask = "reobfJar"
 	}
 
+	object ForgeModern : ForgeLike("forge-modern") {
+		override val modManifestPath = "META-INF/mods.toml"
+		override val excludedResources = super.excludedResources + "META-INF/neoforge.mods.toml"
+		val mixinConfigAttribute = "MixinConfigs"
+		override val jarTask = "jar"
+	}
+
 	companion object {
 		fun of(id: String): Loader = when (id) {
 			"fabric-o" -> FabricO
 			"fabric-m" -> FabricM
 			"neoforge" -> NeoForge
 			"forge" -> Forge
+			"forge-modern" -> ForgeModern
 			else -> error("Unknown loader: '$id'")
 		}
 	}
