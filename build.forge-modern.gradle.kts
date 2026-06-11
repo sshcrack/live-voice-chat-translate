@@ -78,6 +78,7 @@ publishing {
 repositories {
 	minecraft.mavenizer(this)
 	maven("https://maven.neoforged.net/releases") { name = "NeoForged" }
+	maven("https://maven.minecraftforge.net/") { name = "Forge" }
 	mavenCentral()
 	strictMaven("https://api.modrinth.com/maven", "maven.modrinth") { name = "Modrinth" }
 }
