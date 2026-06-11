@@ -61,7 +61,7 @@ class Context(
 
 	val javaVersion: JavaVersion by lazy {
 		when {
-			stonecutter.eval(currentMcVersion, ">=26") -> JavaVersion.VERSION_25
+			stonecutter.eval(currentMcVersion, ">=26") -> JavaVersion.toVersion(25)
 			stonecutter.eval(currentMcVersion, ">=1.20.6") -> JavaVersion.VERSION_21
 			stonecutter.eval(currentMcVersion, ">=1.18") -> JavaVersion.VERSION_17
 			else -> JavaVersion.VERSION_17
@@ -70,7 +70,7 @@ class Context(
 
 	val targetJavaVersion: JavaVersion by lazy {
 		when {
-			stonecutter.eval(currentMcVersion, ">=26") -> JavaVersion.VERSION_25
+			stonecutter.eval(currentMcVersion, ">=26") -> JavaVersion.toVersion(25)
 			stonecutter.eval(currentMcVersion, ">=1.20.6") -> JavaVersion.VERSION_21
 			stonecutter.eval(currentMcVersion, ">=1.18") -> JavaVersion.VERSION_17
 			else -> JavaVersion.VERSION_1_8

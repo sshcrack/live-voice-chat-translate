@@ -52,14 +52,6 @@ deps.minecraft = "26.1.2"
 
 [forge]
 
-[forge."1.12.2"]
-deps.minecraft = "1.12.2"
-deps.forge = "14.23.5.2864"
-
-[forge."1.16.5"]
-deps.minecraft = "1.16.5"
-deps.forge = "36.2.42"
-
 [forge."1.18.2"]
 deps.minecraft = "1.18.2"
 deps.forge = "40.3.12"

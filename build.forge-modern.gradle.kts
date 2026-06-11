@@ -1,8 +1,15 @@
 plugins {
 	id("mod-platform")
 	id("maven-publish")
-	id("net.minecraftforge.gradle") version "7.0.25"
+	id("net.minecraftforge.gradle") version "[7.0.23,8.0)"
 }
+
+// Set Java toolchain early so ForgeGradle's Mavenizer uses the correct JDK
+java.toolchain.languageVersion = JavaLanguageVersion.of(
+	if (stonecutter.eval(sc.current.version, ">=26")) 25
+	else if (stonecutter.eval(sc.current.version, ">=1.20.6")) 21
+	else 17
+)
 
 stonecutter {
 	val (version, loader) = current.project.split('-', limit = 2)
@@ -31,13 +38,12 @@ platform {
 minecraft {
 	runs {
 		configureEach {
-			workingDir = rootProject.layout.projectDirectory.dir("run")
 			systemProperty("forge.enabledGameTestNamespaces", prop("mod.id"))
 		}
-		register("client") {
-			args("--username=Dev")
+		register("client")
+		register("server") {
+			args("--nogui")
 		}
-		register("server")
 	}
 }
 
@@ -70,6 +76,8 @@ publishing {
 }
 
 repositories {
+	minecraft.mavenizer(this)
+	maven("https://maven.neoforged.net/releases") { name = "NeoForged" }
 	mavenCentral()
 	strictMaven("https://api.modrinth.com/maven", "maven.modrinth") { name = "Modrinth" }
 }
@@ -85,8 +93,4 @@ sourceSets {
 			"${rootDir}/versions/datagen/${sc.current.version.split("-")[0]}/src/main/generated"
 		)
 	}
-}
-
-tasks.named("createMinecraftArtifacts") {
-	dependsOn(tasks.named("stonecutterGenerate"))
 }
