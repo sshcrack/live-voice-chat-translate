@@ -39,24 +39,29 @@ DOWNLOADED=0
 
 if [ -f "$SPEECH_FILE" ]; then
     echo "Reading: $SPEECH_FILE"
-    while IFS='|' read -r URL LANG REST; do
+    while IFS= read -r URL; do
         # Trim whitespace
         URL="$(echo "$URL" | xargs)"
-        LANG="$(echo "$LANG" | xargs)"
 
         # Skip comments and empty lines
         [[ -z "$URL" ]] && continue
         [[ "$URL" == \#* ]] && continue
 
-        # Default language
-        if [ -z "$LANG" ]; then
-            LANG="en"
+        # Derive filename from URL basename, ensure uniqueness
+        OUTPUT_NAME="$(basename "$URL")"
+        OUTPUT_NAME="${OUTPUT_NAME%.*}.wav"
+        OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+        if [ -f "$OUTPUT_PATH" ]; then
+            BASE="${OUTPUT_NAME%.wav}"
+            N=1
+            while [ -f "$DEVTEST_DIR/${BASE}_${N}.wav" ]; do
+                N=$((N + 1))
+            done
+            OUTPUT_NAME="${BASE}_${N}.wav"
+            OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
         fi
 
-        OUTPUT_NAME="speech_${LANG}.wav"
-        OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
-
-        echo "  [${LANG}] Downloading: $URL"
+        echo "  Downloading: $URL -> $OUTPUT_NAME"
 
         TMPFILE=$(mktemp)
         if command -v curl &>/dev/null; then
@@ -89,20 +94,15 @@ fi
 # ── Handle single URL argument (legacy) ──────────────────
 if [ $# -ge 1 ] && [ "$DOWNLOADED" -eq 0 ]; then
     ADD_SOURCE="$1"
-    TARGET_LANG="${2:-}"
 
-    if [ -z "$TARGET_LANG" ]; then
-        BASENAME="$(basename "$ADD_SOURCE")"
-        BASENAME="${BASENAME%.*}"
-        if [[ "$BASENAME" =~ _([a-z]{2}(-[a-zA-Z0-9]+)?)$ ]]; then
-            TARGET_LANG="${BASH_REMATCH[1]}"
-        else
-            TARGET_LANG="en"
-        fi
-    fi
-
-    OUTPUT_NAME="speech_${TARGET_LANG}.wav"
+    OUTPUT_NAME="$(basename "$ADD_SOURCE")"
+    OUTPUT_NAME="${OUTPUT_NAME%.*}.wav"
     OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+    if [ -f "$OUTPUT_PATH" ]; then
+        BASE="${OUTPUT_NAME%.wav}"
+        OUTPUT_NAME="${BASE}_1.wav"
+        OUTPUT_PATH="$DEVTEST_DIR/$OUTPUT_NAME"
+    fi
 
     TMPFILE=$(mktemp)
     if [[ "$ADD_SOURCE" =~ ^https?:// ]]; then
@@ -148,31 +148,23 @@ if [ "$WAV_COUNT" -eq 0 ]; then
     echo -e "${YELLOW}No WAV files in $DEVTEST_DIR${NC}"
     echo "  Create a speech list at:"
     echo "    $SPEECH_FILE"
-    echo "  Format (one per line):"
-    echo "    https://example.com/audio.wav|fr"
-    echo "    https://example.com/speech.wav|de"
+    echo "  Format (one URL per line):"
+    echo "    https://example.com/audio_fr.wav"
+    echo "    https://example.com/speech_de.wav"
     echo ""
     echo "  Or place .wav files directly in:"
     echo "    $DEVTEST_DIR"
-    echo ""
-    echo "  Language is detected from filename:"
-    echo "    speech_fr.wav → French    speech_de.wav → German"
-    echo "    speech.wav    → English (default)"
 else
     echo ""
     echo -e "${GREEN}✓ $WAV_COUNT test file(s) ready:${NC}"
     for f in "$DEVTEST_DIR"/*.wav; do
         [ -f "$f" ] || continue
         BASENAME=$(basename "$f" .wav)
-        LANG="en"
-        if [[ "$BASENAME" =~ _([a-z]{2}(-[a-zA-Z0-9]+)?)$ ]]; then
-            LANG="${BASH_REMATCH[1]}"
-        fi
         DURATION="?"
         if command -v ffprobe &>/dev/null; then
             DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$f" 2>/dev/null || echo "?")
         fi
-        echo "    $BASENAME → ${LANG}  (${DURATION}s)"
+        echo "    $BASENAME  (${DURATION}s)"
     done
 fi
 

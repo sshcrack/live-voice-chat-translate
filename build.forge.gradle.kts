@@ -99,7 +99,6 @@ repositories {
 }
 
 dependencies {
-	annotationProcessor("org.spongepowered:mixin:${libs.versions.mixin.get()}:processor")
 	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
 	implementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-forge")
 	if (stonecutter.eval(sc.current.version, "<26")) {

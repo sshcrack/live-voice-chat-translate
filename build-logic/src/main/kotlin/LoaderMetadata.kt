@@ -14,7 +14,6 @@ data class FabricManifest(
 	val license: String,
 	val environment: String = "*",
 	val entrypoints: Map<String, List<String>>,
-	val mixins: List<String>,
 	val depends: Map<String, String> = emptyMap(),
 	val recommends: Map<String, String> = emptyMap(),
 	val breaks: Map<String, String> = emptyMap(),
@@ -28,8 +27,7 @@ data class ForgeManifest(
 	val license: String,
 	val issueTrackerURL: String,
 	val mods: List<ForgeMod>,
-	val dependencies: Map<String, List<ForgeDependency>> = emptyMap(),
-	val mixins: List<ForgeMixin> = emptyList()
+	val dependencies: Map<String, List<ForgeDependency>> = emptyMap()
 )
 
 @Serializable
@@ -55,5 +53,3 @@ data class ForgeDependency(
 	val type: String
 )
 
-@Serializable
-data class ForgeMixin(val config: String)

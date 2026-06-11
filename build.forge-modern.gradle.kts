@@ -94,7 +94,6 @@ dependencies {
 	if (stonecutter.eval(sc.current.version, "<26")) {
 		runtimeOnly("maven.modrinth:simple-voice-chat:forge-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
 	}
-	annotationProcessor("org.spongepowered:mixin:${libs.versions.mixin.get()}:processor")
 }
 
 sourceSets {

@@ -78,8 +78,6 @@ Rename the `com.example.modtemplate` package in
 
 Rename these files to match your `mod.id`:
 
-* `src/main/resources/modtemplate.mixins.json`
-
 Replace `src/main/resources/assets/icon.png` and `.idea/icon.png` with your mod's icon.
 
 ## Development
@@ -110,11 +108,6 @@ LOGGER.info("hello 1.21.7!");
 ```
 
 For more details, read the [Stonecutter documentation](https://stonecutter.kikugie.dev/wiki/).
-
-### Access Wideners/Transformers
-
-* Fabric Access Wideners: `src/main/resources/aw/*.accesswidener` (one per supported Minecraft version)
-* (Neo)Forge Access Transformers: `src/main/resources/aw/*.cfg` (one per supported Minecraft version)
 
 ### Running in Development
 

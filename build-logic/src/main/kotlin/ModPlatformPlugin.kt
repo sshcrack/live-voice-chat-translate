@@ -1,6 +1,6 @@
 @file:Suppress("unused", "DuplicatedCode")
 
-import dev.kikugie.fletching_table.extension.FletchingTableExtension
+
 import dev.kikugie.stonecutter.StonecutterExperimentalAPI
 import dev.kikugie.stonecutter.build.StonecutterBuildExtension
 import org.gradle.api.DefaultTask
@@ -96,7 +96,6 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			}
 		}
 
-		configureFletchingTable(ctx)
 		registerGenerateManifestTask(ctx)
 		configureJarTask(ctx)
 		configureIdea()
@@ -142,9 +141,6 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 	private fun Project.configureProcessResources(ctx: Context) {
 		tasks.named<ProcessResources>("processResources") {
 			dependsOn(tasks.named("stonecutterGenerate"), "kspKotlin")
-			filesMatching("*.mixins.json") {
-				expand("java" to "JAVA_${ctx.javaVersion.majorVersion}")
-			}
 			exclude(ctx.loader.excludedResources)
 		}
 	}
@@ -154,10 +150,7 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 		tasks.withType<Jar>().configureEach {
 			archiveBaseName.set(ctx.modId)
 			dependsOn(generateTask)
-			if (ctx.loader is Loader.Forge) {
-				manifest.attributes(ctx.loader.mixinConfigAttribute to "${ctx.modId}.mixins.json")
 			}
-		}
 	}
 
 	private fun Project.configureIdea() {
@@ -166,13 +159,6 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				isDownloadJavadoc = true
 				isDownloadSources = true
 			}
-		}
-	}
-
-	private fun Project.configureFletchingTable(ctx: Context) {
-		extensions.configure<FletchingTableExtension> {
-			mixins.create("main") { mixin("default", "${ctx.modId}.mixins.json") }
-			j52j.register("main") { extension("json", "**/*.json5") }
 		}
 	}
 
