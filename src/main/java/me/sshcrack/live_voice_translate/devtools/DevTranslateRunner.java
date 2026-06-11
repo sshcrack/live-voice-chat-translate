@@ -1,0 +1,213 @@
+/*? if devtools {*/
+package me.sshcrack.live_voice_translate.devtools;
+
+import de.maxhenkel.voicechat.api.VoicechatClientApi;
+import de.maxhenkel.voicechat.api.audiochannel.ClientStaticAudioChannel;
+import me.sshcrack.live_voice_translate.AudioResampler;
+import me.sshcrack.live_voice_translate.LiveVoiceTranslate;
+import me.sshcrack.live_voice_translate.ModConfig;
+import me.sshcrack.live_voice_translate.TranslationManager;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLConnection;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class DevTranslateRunner {
+
+    private static DevTranslateRunner INSTANCE;
+
+    private static final int FRAME_SIZE = 960;
+    private static final long FRAME_INTERVAL_MS = 20;
+    private static final long DRAIN_TIMEOUT_MS = 5000;
+
+    private VoicechatClientApi api;
+    private ScheduledExecutorService scheduler;
+    private ScheduledFuture<?> tickTask;
+    private final List<TestSource> sources = new ArrayList<>();
+
+    public static DevTranslateRunner get() {
+        if (INSTANCE == null) {
+            INSTANCE = new DevTranslateRunner();
+        }
+        return INSTANCE;
+    }
+
+    public void onVoicechatConnected(VoicechatClientApi api) {
+        if (sources.size() > 0) {
+            LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: test already running");
+            return;
+        }
+        if (!ModConfig.get().isEnabled()) {
+            LiveVoiceTranslate.LOGGER.warn("DevTranslateRunner: translation disabled in config");
+            return;
+        }
+
+        this.api = api;
+        Path devtestDir = Paths.get("config", LiveVoiceTranslate.MOD_ID, "devtest");
+        if (!Files.exists(devtestDir)) {
+            LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: no devtest directory at {}", devtestDir.toAbsolutePath());
+            return;
+        }
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(devtestDir, "*.wav")) {
+            for (Path wavPath : stream) {
+                TestSource source = loadSource(wavPath);
+                if (source != null) {
+                    sources.add(source);
+                }
+            }
+        } catch (IOException e) {
+            LiveVoiceTranslate.LOGGER.error("DevTranslateRunner: failed to scan devtest directory", e);
+        }
+
+        if (sources.isEmpty()) {
+            LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: no WAV files found in devtest directory");
+            return;
+        }
+
+        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded {} test source(s)", sources.size());
+
+        for (TestSource source : sources) {
+            source.channel = api.createStaticAudioChannel(source.uuid);
+        }
+
+        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "DevTranslateRunner");
+            t.setDaemon(true);
+            return t;
+        });
+
+        AtomicInteger idleCounter = new AtomicInteger();
+        tickTask = scheduler.scheduleAtFixedRate(() -> {
+            boolean anyRemaining = false;
+            for (TestSource source : sources) {
+                if (source.nextFrameIdx < source.totalFrames) {
+                    feedFrame(source);
+                    anyRemaining = true;
+                }
+                drainTranslated(source);
+            }
+
+            if (!anyRemaining) {
+                boolean anyOutput = false;
+                for (TestSource source : sources) {
+                    short[] frame;
+                    while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
+                        source.channel.play(frame);
+                        anyOutput = true;
+                    }
+                }
+                if (anyOutput) {
+                    idleCounter.set(0);
+                } else if (idleCounter.incrementAndGet() >= DRAIN_TIMEOUT_MS / 500) {
+                    stop();
+                }
+            } else {
+                idleCounter.set(0);
+            }
+        }, 1000, FRAME_INTERVAL_MS, TimeUnit.MILLISECONDS);
+
+        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: started feeding {} source(s)", sources.size());
+    }
+
+    private void feedFrame(TestSource source) {
+        int start = source.nextFrameIdx * FRAME_SIZE;
+        int end = Math.min(start + FRAME_SIZE, source.pcm.length);
+        short[] frame = Arrays.copyOfRange(source.pcm, start, end);
+        TranslationManager.get().feedAudio(source.uuid, frame);
+        source.nextFrameIdx++;
+    }
+
+    private void drainTranslated(TestSource source) {
+        short[] frame;
+        while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
+            source.channel.play(frame);
+        }
+    }
+
+    public void onVoicechatDisconnected() {
+        stop();
+    }
+
+    private void stop() {
+        if (tickTask != null) {
+            tickTask.cancel(false);
+            tickTask = null;
+        }
+        if (scheduler != null) {
+            scheduler.shutdown();
+            scheduler = null;
+        }
+        for (TestSource source : sources) {
+            TranslationManager.get().onPlayerSilence(source.uuid);
+        }
+        int count = sources.size();
+        sources.clear();
+        api = null;
+        LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: stopped, cleaned up {} source(s)", count);
+    }
+
+    private TestSource loadSource(Path wavPath) {
+        try {
+            WavAudio.Result wav = WavAudio.read(wavPath);
+            short[] pcm = wav.samples;
+            if (wav.sampleRate != 48000) {
+                pcm = AudioResampler.resample(pcm, wav.sampleRate, 48000);
+            }
+
+            String filename = wavPath.getFileName().toString().toLowerCase();
+            String base = filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+            String lang = "en";
+            if (base.contains("_")) {
+                String[] parts = base.split("_");
+                String candidate = parts[parts.length - 1];
+                if (candidate.matches("[a-z]{2}(-[a-zA-Z0-9]+)?")) {
+                    lang = candidate;
+                }
+            }
+
+            UUID uuid = UUID.nameUUIDFromBytes(("devtest:" + filename).getBytes());
+            int totalFrames = (int) Math.ceil((double) pcm.length / FRAME_SIZE);
+
+            double duration = pcm.length / 48000.0;
+            LiveVoiceTranslate.LOGGER.info("DevTranslateRunner: loaded '{}' (lang={}, {}s, {} frames)", filename, lang, String.format("%.1f", duration), totalFrames);
+
+            return new TestSource(uuid, lang, pcm, totalFrames);
+        } catch (IOException e) {
+            LiveVoiceTranslate.LOGGER.error("DevTranslateRunner: failed to load {}", wavPath, e);
+            return null;
+        }
+    }
+
+    private static class TestSource {
+        final UUID uuid;
+        final String language;
+        final short[] pcm;
+        final int totalFrames;
+        int nextFrameIdx;
+        ClientStaticAudioChannel channel;
+
+        TestSource(UUID uuid, String language, short[] pcm, int totalFrames) {
+            this.uuid = uuid;
+            this.language = language;
+            this.pcm = pcm;
+            this.totalFrames = totalFrames;
+            this.nextFrameIdx = 0;
+        }
+    }
+}
+/*?}*/

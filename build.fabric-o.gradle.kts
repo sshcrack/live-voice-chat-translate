@@ -35,7 +35,6 @@ platform {
 }
 
 loom {
-	accessWidenerPath = rootProject.file("src/main/resources/aw/${sc.current.version}.accesswidener")
 	runs.named("client") {
 		client()
 		ideConfigGenerated(true)

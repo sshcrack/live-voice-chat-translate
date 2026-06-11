@@ -26,5 +26,12 @@ public class LiveVoiceTranslate {
 
 	public static void onInitializeClient() {
 		LOGGER.info("Initializing {} Client", MOD_ID);
+		ModConfig config = ModConfig.load();
+		if (config.isEnabled()) {
+			TranslationManager.initialize(config.getApiKey(), config.getTargetLanguage(), config.getMaxWebSockets());
+			LOGGER.info("Translation enabled, target language: {}", config.getTargetLanguage());
+		} else {
+			LOGGER.warn("Translation disabled (no valid API key configured)");
+		}
 	}
 }

@@ -41,7 +41,6 @@ sealed class Loader(val id: String) {
 				description = ctx.description,
 				icon = "assets/icon.png",
 				license = ctx.licenseName,
-				accessWidener = "aw/${ctx.currentMcVersion}.accesswidener",
 				entrypoints = mapOf(
 					"main" to listOf("${ctx.modGroup}.platform.fabric.FabricEntrypoint"),
 					"client" to listOf("${ctx.modGroup}.platform.fabric.FabricClientEntrypoint"),
