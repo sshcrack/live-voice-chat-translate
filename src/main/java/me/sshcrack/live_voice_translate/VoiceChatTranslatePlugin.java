@@ -12,12 +12,12 @@ import me.sshcrack.live_voice_translate.devtools.DevTranslateRunner;
 //?}
 
 //? if neoforge || forge {
-import de.maxhenkel.voicechat.api.ForgeVoicechatPlugin;
-//?}
+/*import de.maxhenkel.voicechat.api.ForgeVoicechatPlugin;
+*///?}
 
 //? if neoforge || forge {
-@ForgeVoicechatPlugin
-//?}
+/*@ForgeVoicechatPlugin
+*///?}
 public class VoiceChatTranslatePlugin implements VoicechatPlugin {
 
     @Override
