@@ -25,6 +25,12 @@ platform {
 		required("fabricloader") {
 			fabricLikeVersionRange = ">=${prop("deps.fabric-loader")}"
 		}
+		required("voicechat_api") {
+			fabricLikeVersionRange = ">=${prop("voicechat_api_version")}"
+		}
+		required("gemini_live_lib") {
+			fabricLikeVersionRange = ">=${prop("gemini_live_lib_version")}"
+		}
 	}
 }
 
@@ -56,6 +62,9 @@ fabricApi {
 
 repositories {
 	mavenCentral()
+	maven("https://maven.maxhenkel.de/repository/public") { name = "MaxHenkel" }
+	maven("https://maven.sshcrack.me/releases") { name = "sshcrackRepositoryReleases" }
+	strictMaven("https://api.modrinth.com/maven", "maven.modrinth") { name = "Modrinth" }
 }
 
 configurations.all {
@@ -72,4 +81,10 @@ dependencies {
 			if (hasProperty("deps.parchment")) parchment("org.parchmentmc.data:parchment-${prop("deps.parchment")}@zip")
 		})
 	modImplementation("net.fabricmc:fabric-loader:${prop("deps.fabric-loader")}")
+	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
+	modImplementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-fabric")
+	if (stonecutter.eval(sc.current.version, "<26")) {
+		runtimeOnly("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}:fabric-stub")
+		runtimeOnly("maven.modrinth:simple-voice-chat:fabric-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
+	}
 }

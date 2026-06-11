@@ -40,6 +40,35 @@ stonecutter {
 	}
 }
 
+val libraryDir = file("../gemini-live-library")
+if (libraryDir.exists()) {
+	println("Including Gemini Live Library from $libraryDir")
+	val geminiVersion = "2.3.4"
+	includeBuild(libraryDir) {
+		dependencySubstitution {
+			val combos = listOf(
+				"1.16.5" to "fabric",
+				"1.18.2" to "fabric", "1.18.2" to "forge",
+				"1.19.2" to "fabric", "1.19.2" to "forge",
+				"1.20.1" to "fabric", "1.20.1" to "forge",
+				"1.21.1" to "fabric", "1.21.1" to "neoforge",
+				"1.21.4" to "fabric", "1.21.4" to "neoforge",
+				"1.21.5" to "fabric", "1.21.5" to "neoforge",
+				"1.21.8" to "fabric", "1.21.8" to "neoforge",
+				"1.21.10" to "fabric", "1.21.10" to "neoforge",
+				"1.21.11" to "fabric", "1.21.11" to "neoforge",
+				"26.1.2" to "fabric", "26.1.2" to "neoforge"
+			)
+			combos.forEach { (mc, loader) ->
+				substitute(module("me.sshcrack:gemini_live_lib:$geminiVersion-$mc-$loader"))
+					.using(project(":$mc-$loader"))
+			}
+		}
+	}
+} else {
+	println("Warning: Gemini Live Library not found, skipping includeBuild")
+}
+
 private fun getBuildscript(loader: String, version: String): String {
 	if (loader == "fabric") {
 		return if (version.startsWith("1.")) {

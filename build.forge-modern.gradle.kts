@@ -32,6 +32,9 @@ platform {
 		required("forge") {
 			forgeLikeVersionRange.set("[1,)")
 		}
+		required("voicechat_api") {
+			forgeLikeVersionRange = "[${prop("voicechat_api_version")},)"
+		}
 	}
 }
 
@@ -79,12 +82,18 @@ repositories {
 	minecraft.mavenizer(this)
 	maven("https://maven.neoforged.net/releases") { name = "NeoForged" }
 	maven("https://maven.minecraftforge.net/") { name = "Forge" }
+	maven("https://maven.maxhenkel.de/repository/public") { name = "MaxHenkel" }
+	maven("https://maven.sshcrack.me/releases") { name = "sshcrackRepositoryReleases" }
 	mavenCentral()
 	strictMaven("https://api.modrinth.com/maven", "maven.modrinth") { name = "Modrinth" }
 }
 
 dependencies {
 	implementation(minecraft.dependency("net.minecraftforge:forge:${prop("deps.minecraft")}-${prop("deps.forge")}"))
+	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
+	if (stonecutter.eval(sc.current.version, "<26")) {
+		runtimeOnly("maven.modrinth:simple-voice-chat:forge-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
+	}
 	annotationProcessor("org.spongepowered:mixin:${libs.versions.mixin.get()}:processor")
 }
 

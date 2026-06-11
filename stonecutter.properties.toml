@@ -13,6 +13,9 @@ mod.license.dist = "repo"
 mod.sources_url = "https://github.com/sshcrack/voice-chat-translate"
 mod.homepage_url = "https://github.com/sshcrack/voice-chat-translate"
 mod.issues_url = "https://github.com/sshcrack/voice-chat-translate/issues"
+voicechat_api_version = "2.6.13"
+voicechat_mod_version = "2.6.18"
+gemini_live_lib_version = "2.3.4"
 
 [fabric]
 deps.fabric-loader = "0.16.10"

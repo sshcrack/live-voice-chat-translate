@@ -44,7 +44,8 @@ sealed class Loader(val id: String) {
 				accessWidener = "aw/${ctx.currentMcVersion}.accesswidener",
 				entrypoints = mapOf(
 					"main" to listOf("${ctx.modGroup}.platform.fabric.FabricEntrypoint"),
-					"client" to listOf("${ctx.modGroup}.platform.fabric.FabricClientEntrypoint")
+					"client" to listOf("${ctx.modGroup}.platform.fabric.FabricClientEntrypoint"),
+					"voicechat" to listOf("${ctx.modGroup}.VoiceChatTranslatePlugin")
 				),
 				mixins = listOf("${ctx.modId}.mixins.json"),
 				depends = ctx.extension.dependencies.required.associate { it.modid.get() to it.fabricLikeVersionRange.get() },
