@@ -27,13 +27,11 @@ public class PlayerTranslateSession {
 
     public void feedAudio(short[] pcm48k) {
         lastAudioTimestamp = System.currentTimeMillis();
-        LiveVoiceTranslate.LOGGER.debug("[Session {}] Feeding {} audio samples", playerId, pcm48k.length);
         short[] pcm16k = AudioResampler.resample(pcm48k, 48000, 16000);
         geminiClient.addPromptAudio(pcm16k);
     }
 
     public void enqueueTranslatedFrame(short[] pcm48k) {
-        LiveVoiceTranslate.LOGGER.debug("[Session {}] Received translated frame ({} samples)", playerId, pcm48k.length);
         translatedFrames.add(pcm48k);
     }
 

@@ -160,8 +160,10 @@ public class DevTranslateRunner {
         int start = source.nextFrameIdx * FRAME_SIZE;
         int end = Math.min(start + FRAME_SIZE, source.pcm.length);
         short[] frame = Arrays.copyOfRange(source.pcm, start, end);
-        LiveVoiceTranslate.LOGGER.debug("[DevTools] Feeding frame {}/{} for '{}' ({} samples)",
-            source.nextFrameIdx + 1, source.totalFrames, source.name, frame.length);
+        if (source.nextFrameIdx % 50 == 0) {
+            LiveVoiceTranslate.LOGGER.info("[DevTools] Feeding frame {}/{} for '{}'",
+                source.nextFrameIdx + 1, source.totalFrames, source.name);
+        }
         TranslationManager.get().feedAudio(source.uuid, frame);
         source.nextFrameIdx++;
     }

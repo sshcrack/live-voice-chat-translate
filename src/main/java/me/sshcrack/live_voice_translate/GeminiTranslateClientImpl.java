@@ -34,7 +34,6 @@ public class GeminiTranslateClientImpl extends GeminiLiveTranslateClient {
 
     @Override
     public void addPromptAudio(short[] audio16k) {
-        LiveVoiceTranslate.LOGGER.debug("[WS] Session {} feeding {} samples", session.getPlayerId(), audio16k.length);
         byte[] bytes = AudioResampler.shortsToLittleEndianBytes(audio16k);
         RealtimeInput input = new RealtimeInput();
         input.audio = new RealtimeInput.Blob("audio/pcm;rate=16000", bytes);
@@ -43,7 +42,6 @@ public class GeminiTranslateClientImpl extends GeminiLiveTranslateClient {
 
     @Override
     public void onTranslatedAudio(byte[] audio, int sampleRate) {
-        LiveVoiceTranslate.LOGGER.debug("[WS] Session {} received {} bytes at {}Hz", session.getPlayerId(), audio.length, sampleRate);
         short[] pcm24k = AudioResampler.littleEndianBytesToShorts(audio);
         short[] pcm48k = AudioResampler.resample(pcm24k, sampleRate, 48000);
         session.enqueueTranslatedFrame(pcm48k);
