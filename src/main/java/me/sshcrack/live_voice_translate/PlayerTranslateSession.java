@@ -43,6 +43,10 @@ public class PlayerTranslateSession {
         return (System.currentTimeMillis() - lastAudioTimestamp) > IDLE_TIMEOUT_MS;
     }
 
+    public boolean isConnectedToSocket() {
+        return connected;
+    }
+
     public boolean isConnected() {
         return connected && geminiClient.isOpen() && geminiClient.isSetupComplete();
     }

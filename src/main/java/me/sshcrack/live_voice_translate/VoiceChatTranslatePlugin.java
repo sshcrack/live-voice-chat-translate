@@ -43,17 +43,20 @@ public class VoiceChatTranslatePlugin implements VoicechatPlugin {
     private void handleIncomingSound(ClientReceiveSoundEvent event) {
         if (!ModConfig.get().isEnabled()) return;
 
+        TranslationManager tm = TranslationManager.get();
+        if (tm == null) return;
+
         UUID senderId = event.getId();
         short[] rawAudio = event.getRawAudio();
 
         if (rawAudio.length == 0) {
-            TranslationManager.get().onPlayerSilence(senderId);
+            tm.onPlayerSilence(senderId);
             return;
         }
 
-        TranslationManager.get().feedAudio(senderId, rawAudio);
+        tm.feedAudio(senderId, rawAudio);
 
-        short[] translated = TranslationManager.get().getTranslatedAudio(senderId);
+        short[] translated = tm.getTranslatedAudio(senderId);
         if (translated != null) {
             event.setRawAudio(translated);
         }

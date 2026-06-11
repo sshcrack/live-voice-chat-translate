@@ -4,7 +4,7 @@ public class AudioResampler {
 
     public static short[] resample(short[] input, int fromHz, int toHz) {
         if (fromHz == toHz) {
-            return input.clone();
+            return input;
         }
         double ratio = (double) fromHz / toHz;
         int outputLength = (int) Math.ceil(input.length / ratio);

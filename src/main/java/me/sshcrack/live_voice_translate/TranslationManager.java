@@ -72,7 +72,13 @@ public class TranslationManager {
     }
 
     public short[] getTranslatedAudio(UUID playerId) {
-        PlayerTranslateSession session = activeSessions.get(playerId);
+        PlayerTranslateSession session;
+        lock.lock();
+        try {
+            session = activeSessions.get(playerId);
+        } finally {
+            lock.unlock();
+        }
         return session != null ? session.pollTranslatedFrame() : null;
     }
 
@@ -114,9 +120,12 @@ public class TranslationManager {
                 PlayerTranslateSession session = entry.getValue();
                 if (session.isIdle()) {
                     LiveVoiceTranslate.LOGGER.debug("Closing idle translation session for player {}", entry.getKey());
+                    boolean wasConnected = session.isConnectedToSocket();
                     session.close();
-                    openSocketCount--;
-                    promoteNext();
+                    if (wasConnected) {
+                        openSocketCount--;
+                        promoteNext();
+                    }
                     return true;
                 }
                 return false;

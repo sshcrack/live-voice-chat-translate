@@ -43,7 +43,12 @@ public class ModConfig {
                 }
                 targetLanguage = props.getProperty("targetLanguage", "en");
                 enabled = Boolean.parseBoolean(props.getProperty("enabled", "true"));
-                maxWebSockets = Integer.parseInt(props.getProperty("maxWebSockets", "3"));
+                try {
+                    maxWebSockets = Integer.parseInt(props.getProperty("maxWebSockets", "3"));
+                } catch (NumberFormatException e) {
+                    LiveVoiceTranslate.LOGGER.warn("Invalid maxWebSockets value in config, using default of 3");
+                    maxWebSockets = 3;
+                }
             } catch (IOException e) {
                 LiveVoiceTranslate.LOGGER.error("Failed to load config from {}", configPath, e);
             }
