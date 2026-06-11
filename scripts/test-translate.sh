@@ -11,6 +11,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+cleanup() {
+    cd "$PROJECT_DIR" 2>/dev/null
+    ./gradlew "Refresh active project" > /dev/null 2>&1 || true
+}
+
+trap cleanup EXIT
+
 echo "=================================="
 echo " Live Voice Chat Translate - Test"
 echo "=================================="
@@ -185,6 +192,3 @@ cd "$PROJECT_DIR"
 
 # Run client
 ./gradlew runActiveClient -Plive_voice_translate.devtools=true
-
-# Reset active code
-./gradlew "Refresh active project" > /dev/null 2>&1
