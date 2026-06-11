@@ -12,8 +12,11 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 cleanup() {
+    echo ""
+    echo "Clearing up..."
     cd "$PROJECT_DIR" 2>/dev/null
     ./gradlew "Refresh active project" > /dev/null 2>&1 || true
+    echo "Done"
 }
 
 trap cleanup EXIT
