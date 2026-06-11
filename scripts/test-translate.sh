@@ -179,4 +179,12 @@ echo "  Connect to a server with Simple Voice Chat"
 echo ""
 
 cd "$PROJECT_DIR"
-exec ./gradlew runActiveClient -Plive_voice_translate.devtools=true
+
+# Run Refresh active project with devtools to set active code
+./gradlew "Refresh active project" -Plive_voice_translate.devtools=true > /dev/null 2>&1
+
+# Run client
+./gradlew runActiveClient -Plive_voice_translate.devtools=true
+
+# Reset active code
+./gradlew "Refresh active project" > /dev/null 2>&1
