@@ -25,7 +25,7 @@ sealed class Loader(val id: String) {
 	sealed class FabricLike(id: String) : Loader(id) {
 		override val isFabricLike = true
 		override val excludedResources = listOf(
-			"META-INF/mods.toml", "META-INF/neoforge.mods.toml", "aw/*.cfg", ".cache", "pack.mcmeta"
+			"META-INF/mods.toml", "META-INF/neoforge.mods.toml", ".cache", "pack.mcmeta"
 		)
 
 		override fun generateManifest(ctx: Context): String {

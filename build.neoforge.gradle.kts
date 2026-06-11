@@ -34,7 +34,6 @@ platform {
 
 neoForge {
 	version = prop("deps.neoforge")
-	accessTransformers.from(rootProject.file("src/main/resources/aw/${stonecutter.current.version}.cfg"))
 	validateAccessTransformers = true
 
 	if (hasProperty("deps.parchment")) parchment {

@@ -35,12 +35,6 @@ platform {
 legacyForge {
 	version = "${prop("deps.minecraft")}-${prop("deps.forge")}"
 
-	validateAccessTransformers = true
-
-	accessTransformers.from(
-		rootProject.file("src/main/resources/aw/${sc.current.version}.cfg")
-	)
-
 	runs {
 		register("client") {
 			client()

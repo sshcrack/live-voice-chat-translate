@@ -63,9 +63,7 @@ dependencies {
 	minecraft("com.mojang:minecraft:${prop("deps.minecraft")}")
 	implementation("net.fabricmc:fabric-loader:${prop("deps.fabric-loader")}")
 	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
-	implementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-fabric") {
-		exclude(group = "net.fabricmc.fabric-api")
-	}
+	implementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-fabric")
 	if (stonecutter.eval(sc.current.version, "<26")) {
 		runtimeOnly("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}:fabric-stub")
 		implementation("maven.modrinth:simple-voice-chat:fabric-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
