@@ -1,5 +1,4 @@
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class FabricManifest(
@@ -10,7 +9,6 @@ data class FabricManifest(
 	val authors: List<String>,
 	val contributors: List<String>,
 	val contact: Map<String, String>,
-	val custom: JsonObject,
 	val description: String,
 	val icon: String,
 	val license: String,

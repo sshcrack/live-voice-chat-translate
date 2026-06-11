@@ -21,6 +21,7 @@ import org.gradle.kotlin.dsl.*
 import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import javax.inject.Inject
+import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 val Project.sc: StonecutterBuildExtension
 	get() = extensions.getByType<StonecutterBuildExtension>()
@@ -114,6 +115,12 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			withJavadocJar()
 			sourceCompatibility = ctx.javaVersion
 			targetCompatibility = ctx.javaVersion
+			toolchain {
+				languageVersion = JavaLanguageVersion.of(ctx.javaVersion.majorVersion.toInt())
+			}
+		}
+		tasks.matching { it.name == "javadoc" }.configureEach {
+			(this as org.gradle.external.javadoc.StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
 		}
 	}
 

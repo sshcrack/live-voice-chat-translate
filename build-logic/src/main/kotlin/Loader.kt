@@ -38,21 +38,13 @@ sealed class Loader(val id: String) {
 				contact = mapOf(
 					"sources" to ctx.sourcesUrl, "issues" to ctx.issuesUrl, "homepage" to ctx.homepageUrl
 				),
-				custom = buildJsonObject {
-					putJsonObject("modmenu") {
-						putJsonObject("links") {
-							put("modmenu.discord", ctx.discordUrl)
-						}
-					}
-				},
 				description = ctx.description,
 				icon = "assets/icon.png",
 				license = ctx.licenseName,
 				accessWidener = "aw/${ctx.currentMcVersion}.accesswidener",
 				entrypoints = mapOf(
 					"main" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricEntrypoint"),
-					"client" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricClientEntrypoint"),
-					"fabric-datagen" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.datagen.FabricDataGeneratorEntrypoint")
+					"client" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricClientEntrypoint")
 				),
 				mixins = listOf("${ctx.modId}.mixins.json"),
 				depends = ctx.extension.dependencies.required.associate { it.modid.get() to it.fabricLikeVersionRange.get() },

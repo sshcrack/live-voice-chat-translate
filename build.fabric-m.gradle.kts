@@ -22,14 +22,9 @@ platform {
 		required("minecraft") {
 			fabricLikeVersionRange = prop("deps.minecraft")
 		}
-		required("fabric-api") {
-			slug("fabric-api")
-			fabricLikeVersionRange = ">=${prop("deps.fabric-api")}"
-		}
 		required("fabricloader") {
 			fabricLikeVersionRange = ">=${prop("deps.fabric-loader")}"
 		}
-		optional("modmenu") {}
 	}
 }
 
@@ -61,15 +56,9 @@ fabricApi {
 
 repositories {
 	mavenCentral()
-	strictMaven("https://maven.terraformersmc.com/", "com.terraformersmc") { name = "TerraformersMC" }
-	strictMaven("https://api.modrinth.com/maven", "maven.modrinth") { name = "Modrinth" }
 }
 
 dependencies {
 	minecraft("com.mojang:minecraft:${prop("deps.minecraft")}")
 	implementation("net.fabricmc:fabric-loader:${prop("deps.fabric-loader")}")
-	// implementation(libs.moulberry.mixinconstraints)
-	// include(libs.moulberry.mixinconstraints)
-	implementation("net.fabricmc.fabric-api:fabric-api:${prop("deps.fabric-api")}")
-	localRuntime("com.terraformersmc:modmenu:${prop("deps.modmenu")}")
 }
