@@ -43,8 +43,8 @@ sealed class Loader(val id: String) {
 				license = ctx.licenseName,
 				accessWidener = "aw/${ctx.currentMcVersion}.accesswidener",
 				entrypoints = mapOf(
-					"main" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricEntrypoint"),
-					"client" to listOf("${ctx.modGroup}.${ctx.modId}.platform.fabric.FabricClientEntrypoint")
+					"main" to listOf("${ctx.modGroup}.platform.fabric.FabricEntrypoint"),
+					"client" to listOf("${ctx.modGroup}.platform.fabric.FabricClientEntrypoint")
 				),
 				mixins = listOf("${ctx.modId}.mixins.json"),
 				depends = ctx.extension.dependencies.required.associate { it.modid.get() to it.fabricLikeVersionRange.get() },
