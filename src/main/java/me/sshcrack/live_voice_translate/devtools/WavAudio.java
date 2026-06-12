@@ -1,5 +1,5 @@
 //? if devtools {
-package me.sshcrack.live_voice_translate.devtools;
+/*package me.sshcrack.live_voice_translate.devtools;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -140,4 +140,4 @@ public class WavAudio {
     }
 }
 
-//?}
+*///?}
