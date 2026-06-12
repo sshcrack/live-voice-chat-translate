@@ -57,6 +57,7 @@ run_version() {
     else
         EXIT_CODE=$?
         echo "[$(date +%H:%M:%S)] === BUILD FAILED: $VERSION (exit $EXIT_CODE) ==="
+        exit $EXIT_CODE
     fi
 
     MC_LOG="versions/$VERSION/run/logs/latest.log"
@@ -84,6 +85,7 @@ kill_remaining() {
         kill "$p" 2>/dev/null || true
     done
     RUNNING_PIDS=()
+    ./gradlew --stop 2>/dev/null || true
 }
 
 FAILED=false
