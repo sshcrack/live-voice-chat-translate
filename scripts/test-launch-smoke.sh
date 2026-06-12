@@ -30,6 +30,8 @@ mapfile -t VERSION_ARRAY <<< "$VERSIONS"
 
 LOG_FILES=()
 
+ABORT=false
+
 cleanup() {
     for PID in "${RUNNING_PIDS[@]:-}"; do
         kill "$PID" 2>/dev/null || true
@@ -38,6 +40,7 @@ cleanup() {
 }
 
 trap cleanup EXIT
+trap 'echo ""; echo "Aborting..."; ABORT=true; cleanup; exit 1' SIGINT
 
 ./gradlew "Refresh active project" -Plive_voice_translate.devtools=true > /dev/null 2>&1
 
@@ -61,8 +64,33 @@ run_version() {
     fi
 }
 
+wait_any() {
+    set +e
+    wait -n
+    local ec=$?
+    set -e
+    # Remove dead PIDs from RUNNING_PIDS
+    local alive=()
+    for p in "${RUNNING_PIDS[@]}"; do
+        kill -0 "$p" 2>/dev/null && alive+=("$p")
+    done
+    RUNNING_PIDS=("${alive[@]}")
+    return "$ec"
+}
+
+kill_remaining() {
+    for p in "${RUNNING_PIDS[@]}"; do
+        kill "$p" 2>/dev/null || true
+    done
+    RUNNING_PIDS=()
+}
+
 RUNNING_PIDS=()
+FAILED=false
 for VERSION in "${VERSION_ARRAY[@]}"; do
+    $ABORT && break
+    $FAILED && break
+
     LOG_FILE=$(mktemp "/tmp/launch-smoke-${VERSION}-XXXXXX.log")
     LOG_FILES+=("$VERSION:$LOG_FILE")
 
@@ -71,17 +99,21 @@ for VERSION in "${VERSION_ARRAY[@]}"; do
     RUNNING_PIDS+=("$PID")
 
     if [ ${#RUNNING_PIDS[@]} -ge "$MAX_PARALLEL" ]; then
-        wait -n 2>/dev/null || true
-        NEW_PIDS=()
-        for P in "${RUNNING_PIDS[@]}"; do
-            kill -0 "$P" 2>/dev/null && NEW_PIDS+=("$P")
-        done
-        RUNNING_PIDS=("${NEW_PIDS[@]}")
+        if ! wait_any; then
+            echo "[$(date +%H:%M:%S)] === A client failed, aborting all remaining ==="
+            FAILED=true
+            kill_remaining
+        fi
     fi
 done
 
-for PID in "${RUNNING_PIDS[@]}"; do
-    wait "$PID" 2>/dev/null || true
+# Wait for any remaining clients
+while [ ${#RUNNING_PIDS[@]} -gt 0 ] && ! $ABORT && ! $FAILED; do
+    if ! wait_any; then
+        echo "[$(date +%H:%M:%S)] === A client failed, aborting all remaining ==="
+        FAILED=true
+        kill_remaining
+    fi
 done
 
 echo ""
