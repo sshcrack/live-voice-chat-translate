@@ -1,9 +1,10 @@
 package me.sshcrack.live_voice_translate;
 
-import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -14,8 +15,11 @@ public class TranslationManager {
 
     private static TranslationManager INSTANCE;
 
+    private record QueuedSession(PlayerTranslateSession session, double[] position) {}
+
     private final Map<UUID, PlayerTranslateSession> activeSessions = new HashMap<>();
-    private final Queue<PlayerTranslateSession> pendingQueue = new ArrayDeque<>();
+    private final List<QueuedSession> pendingList = new ArrayList<>();
+    private final Map<UUID, double[]> playerPositions = new HashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "TranslationManager-IdleChecker");
@@ -50,20 +54,32 @@ public class TranslationManager {
         return count;
     }
 
+    public void feedAudio(UUID playerId, short[] audio48k, double[] position) {
+        feedAudio(playerId, audio48k, position);
+    }
+
     public void feedAudio(UUID playerId, short[] audio48k) {
+        feedAudio(playerId, audio48k, null);
+    }
+
+    private void feedAudio(UUID playerId, short[] audio48k, double[] position) {
         lock.lock();
         try {
+            if (position != null) {
+                playerPositions.put(playerId, position);
+            }
             PlayerTranslateSession session = activeSessions.get(playerId);
             if (session == null) {
                 LiveVoiceTranslate.LOGGER.info("[TM] New session for player {} ({} pending)",
-                    playerId, pendingQueue.size());
+                    playerId, pendingList.size());
                 session = new PlayerTranslateSession(playerId, apiKey, targetLanguage);
                 activeSessions.put(playerId, session);
                 if (getOpenSocketCount() < maxSockets) {
                     session.connect();
                 } else {
                     LiveVoiceTranslate.LOGGER.info("[TM] Queuing session {} (max {} sockets reached)", playerId, maxSockets);
-                    pendingQueue.add(session);
+                    double[] pos = playerPositions.get(playerId);
+                    pendingList.add(new QueuedSession(session, pos));
                 }
             }
             if (session.isConnected()) {
@@ -94,6 +110,7 @@ public class TranslationManager {
             PlayerTranslateSession session = activeSessions.remove(playerId);
             if (session != null) {
                 session.close();
+                playerPositions.remove(playerId);
                 LiveVoiceTranslate.LOGGER.info("[TM] Closed session {} ({} open sockets remaining)", playerId, getOpenSocketCount());
                 promoteNext();
             }
@@ -103,11 +120,28 @@ public class TranslationManager {
     }
 
     private void promoteNext() {
-        PlayerTranslateSession next = pendingQueue.poll();
-        if (next != null) {
-            LiveVoiceTranslate.LOGGER.info("[TM] Promoting pending session {} ({} open sockets)", next.getPlayerId(), getOpenSocketCount());
-            next.connect();
+        if (pendingList.isEmpty()) return;
+
+        var player = net.minecraft.client.Minecraft.getInstance().player;
+        if (player == null) {
+            LiveVoiceTranslate.LOGGER.warn("[TM] Local player is null, falling back to FIFO promotion");
+            var entry = pendingList.remove(0);
+            entry.session.connect();
+            return;
         }
+
+        pendingList.sort(Comparator.comparingDouble(e -> {
+            double[] pos = e.position;
+            if (pos == null) return Double.MAX_VALUE;
+            double dx = pos[0] - player.getX();
+            double dy = pos[1] - player.getY();
+            double dz = pos[2] - player.getZ();
+            return dx * dx + dy * dy + dz * dz;
+        }));
+
+        var nearest = pendingList.remove(0);
+        LiveVoiceTranslate.LOGGER.info("[TM] Promoting pending session {} ({} open sockets)", nearest.session.getPlayerId(), getOpenSocketCount());
+        nearest.session.connect();
     }
 
     private void checkIdleSessions() {
@@ -118,6 +152,7 @@ public class TranslationManager {
                 if (session.isIdle()) {
                     LiveVoiceTranslate.LOGGER.debug("Closing idle translation session for player {}", entry.getKey());
                     session.close();
+                    playerPositions.remove(entry.getKey());
                     promoteNext();
                     return true;
                 }
@@ -144,7 +179,8 @@ public class TranslationManager {
                 session.close();
             }
             activeSessions.clear();
-            pendingQueue.clear();
+            pendingList.clear();
+            playerPositions.clear();
         } finally {
             lock.unlock();
         }

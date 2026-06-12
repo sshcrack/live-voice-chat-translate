@@ -1,0 +1,11 @@
+{
+  "clean": false,
+  "issues": [
+    {
+      "file": "src/main/java/me/sshcrack/live_voice_translate/TranslationManager.java",
+      "line": 57,
+      "description": "Data race on playerPositions: the write in feedAudio(UUID, short[], double[]) at line 57 (playerPositions.put) happens outside the ReentrantLock, while all reads (playerPositions.get in feedAudio(UUID, short[])) and other writes (playerPositions.remove in closeSession/checkIdleSessions) happen inside the lock. HashMap is not thread-safe — concurrent unsynchronized put with synchronized remove/get can cause stale reads or map corruption. Fix: move the playerPositions.put inside the lock, e.g. by acquiring the lock before writing, or restructuring to pass the position through to the inner feedAudio method which already holds the lock."
+    }
+  ],
+  "summary": "Found 1 issue: a data race on the new playerPositions HashMap where an unsynchronized write can race with synchronized reads/writes. This should be fixed before merging."
+}

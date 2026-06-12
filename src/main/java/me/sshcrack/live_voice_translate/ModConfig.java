@@ -15,12 +15,14 @@ public class ModConfig {
     private final String targetLanguage;
     private final boolean enabled;
     private final int maxWebSockets;
+    private final float originalAudioVolume;
 
-    private ModConfig(String apiKey, String targetLanguage, boolean enabled, int maxWebSockets) {
+    private ModConfig(String apiKey, String targetLanguage, boolean enabled, int maxWebSockets, float originalAudioVolume) {
         this.apiKey = apiKey;
         this.targetLanguage = targetLanguage;
         this.enabled = enabled && !apiKey.isEmpty();
         this.maxWebSockets = Math.min(maxWebSockets, 3);
+        this.originalAudioVolume = Math.max(0, Math.min(1, originalAudioVolume));
     }
 
     public static synchronized ModConfig load() {
@@ -32,6 +34,7 @@ public class ModConfig {
         String targetLanguage = "en";
         boolean enabled = true;
         int maxWebSockets = 3;
+        float originalAudioVolume = 0.15f;
 
         String configDir = System.getProperty("live_voice_translate.config_dir", "config");
         Path configPath = Paths.get(configDir, LiveVoiceTranslate.MOD_ID + ".properties");
@@ -44,12 +47,18 @@ public class ModConfig {
                 }
                 targetLanguage = props.getProperty("targetLanguage", "en");
                 enabled = Boolean.parseBoolean(props.getProperty("enabled", "true"));
-                try {
-                    maxWebSockets = Integer.parseInt(props.getProperty("maxWebSockets", "3"));
-                } catch (NumberFormatException e) {
-                    LiveVoiceTranslate.LOGGER.warn("Invalid maxWebSockets value in config, using default of 3");
-                    maxWebSockets = 3;
-                }
+                    try {
+                        maxWebSockets = Integer.parseInt(props.getProperty("maxWebSockets", "3"));
+                    } catch (NumberFormatException e) {
+                        LiveVoiceTranslate.LOGGER.warn("Invalid maxWebSockets value in config, using default of 3");
+                        maxWebSockets = 3;
+                    }
+                    try {
+                        originalAudioVolume = Float.parseFloat(props.getProperty("originalAudioVolume", "0.15"));
+                    } catch (NumberFormatException e) {
+                        LiveVoiceTranslate.LOGGER.warn("Invalid originalAudioVolume value in config, using default of 0.15");
+                        originalAudioVolume = 0.15f;
+                    }
             } catch (IOException e) {
                 LiveVoiceTranslate.LOGGER.error("Failed to load config from {}", configPath, e);
             }
@@ -63,7 +72,7 @@ public class ModConfig {
             }
         }
 
-        INSTANCE = new ModConfig(apiKey, targetLanguage, enabled, maxWebSockets);
+        INSTANCE = new ModConfig(apiKey, targetLanguage, enabled, maxWebSockets, originalAudioVolume);
         return INSTANCE;
     }
 
@@ -88,5 +97,9 @@ public class ModConfig {
 
     public int getMaxWebSockets() {
         return maxWebSockets;
+    }
+
+    public float getOriginalAudioVolume() {
+        return originalAudioVolume;
     }
 }
