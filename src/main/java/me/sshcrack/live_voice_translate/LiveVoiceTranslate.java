@@ -27,12 +27,12 @@ public class LiveVoiceTranslate {
 	public static void onInitializeClient() {
 		LOGGER.info("Initializing {} Client", MOD_ID);
 		//? if devtools {
-		/*LOGGER.warn("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		LOGGER.warn("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		LOGGER.warn("!!!               DEVTOOLS MODE ENABLED                !!!");
 		LOGGER.warn("!!!    Test audio files will play around you in-game    !!!");
 		LOGGER.warn("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		me.sshcrack.live_voice_translate.devtools.DevAutoQuit.init();
-		*///?}
+		//?}
 		ModConfig config = ModConfig.load();
 		if (config.isEnabled()) {
 			TranslationManager.initialize(config.getApiKey(), config.getTargetLanguage(), config.getMaxWebSockets());

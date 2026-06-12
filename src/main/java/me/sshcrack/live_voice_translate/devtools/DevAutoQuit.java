@@ -1,13 +1,9 @@
-/*? if devtools {*/
-/*package me.sshcrack.live_voice_translate.devtools;
+//? if devtools {
+package me.sshcrack.live_voice_translate.devtools;
 
 import me.sshcrack.live_voice_translate.LiveVoiceTranslate;
 import net.minecraft.client.Minecraft;
-//? if < 1.17 {
-/*import net.minecraft.client.gui.screen.TitleScreen;*/
-//?} else {
 import net.minecraft.client.gui.screens.TitleScreen;
-//?}
 
 public class DevAutoQuit {
     private static boolean quitting = false;
@@ -30,4 +26,5 @@ public class DevAutoQuit {
         mc.execute(DevAutoQuit::tick);
     }
 }
-*///?}
+
+//?}

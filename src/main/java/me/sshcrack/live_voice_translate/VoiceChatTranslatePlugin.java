@@ -7,9 +7,9 @@ import de.maxhenkel.voicechat.api.events.EventRegistration;
 import java.util.UUID;
 
 //? if devtools {
-/*import de.maxhenkel.voicechat.api.events.ClientVoicechatConnectionEvent;
+import de.maxhenkel.voicechat.api.events.ClientVoicechatConnectionEvent;
 import me.sshcrack.live_voice_translate.devtools.DevTranslateRunner;
-*///?}
+//?}
 
 //? if neoforge || forge {
 /*import de.maxhenkel.voicechat.api.ForgeVoicechatPlugin;
@@ -30,14 +30,14 @@ public class VoiceChatTranslatePlugin implements VoicechatPlugin {
         registration.registerEvent(ClientReceiveSoundEvent.StaticSound.class, this::handleIncomingSound);
         registration.registerEvent(ClientReceiveSoundEvent.LocationalSound.class, this::handleIncomingSound);
         //? if devtools {
-        /*registration.registerEvent(ClientVoicechatConnectionEvent.class, event -> {
+        registration.registerEvent(ClientVoicechatConnectionEvent.class, event -> {
             if (event.isConnected()) {
                 DevTranslateRunner.get().onVoicechatConnected(event.getVoicechat());
             } else {
                 DevTranslateRunner.get().onVoicechatDisconnected();
             }
         });
-        *///?}
+        //?}
     }
 
     private void handleIncomingSound(ClientReceiveSoundEvent event) {
