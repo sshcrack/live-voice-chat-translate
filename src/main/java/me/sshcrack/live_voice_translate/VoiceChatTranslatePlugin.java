@@ -1,5 +1,6 @@
 package me.sshcrack.live_voice_translate;
 
+import de.maxhenkel.voicechat.api.Position;
 import de.maxhenkel.voicechat.api.VoicechatPlugin;
 import de.maxhenkel.voicechat.api.events.ClientReceiveSoundEvent;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
@@ -54,11 +55,23 @@ public class VoiceChatTranslatePlugin implements VoicechatPlugin {
             return;
         }
 
-        tm.feedAudio(senderId, rawAudio);
+        double[] position = null;
+        if (event instanceof ClientReceiveSoundEvent.LocationalSound loc) {
+            Position p = loc.getPosition();
+            position = new double[]{p.getX(), p.getY(), p.getZ()};
+        }
+
+        tm.feedAudio(senderId, rawAudio, position);
 
         short[] translated = tm.getTranslatedAudio(senderId);
         if (translated != null) {
-            event.setRawAudio(translated);
+            float volume = ModConfig.get().getOriginalAudioVolume();
+            if (volume > 0f) {
+                short[] mixed = AudioResampler.mixAudio(rawAudio, translated, volume);
+                event.setRawAudio(mixed);
+            } else {
+                event.setRawAudio(translated);
+            }
         }
     }
 }
