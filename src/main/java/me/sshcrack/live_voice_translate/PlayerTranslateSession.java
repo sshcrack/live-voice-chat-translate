@@ -2,16 +2,18 @@ package me.sshcrack.live_voice_translate;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PlayerTranslateSession {
 
     private static final long IDLE_TIMEOUT_MS = 5000;
+    private static final int MAX_QUEUED_FRAMES = 100;
 
     private final UUID playerId;
     private final GeminiTranslateClientImpl geminiClient;
     private final ConcurrentLinkedQueue<short[]> translatedFrames = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger queuedFrameCount = new AtomicInteger();
     private volatile long lastAudioTimestamp;
-    private volatile boolean connected;
 
     public PlayerTranslateSession(UUID playerId, String apiKey, String targetLanguage) {
         this.playerId = playerId;
@@ -22,7 +24,6 @@ public class PlayerTranslateSession {
     public void connect() {
         LiveVoiceTranslate.LOGGER.info("[Session {}] Connecting to Gemini...", playerId);
         geminiClient.connect();
-        connected = true;
     }
 
     public void feedAudio(short[] pcm48k) {
@@ -32,11 +33,20 @@ public class PlayerTranslateSession {
     }
 
     public void enqueueTranslatedFrame(short[] pcm48k) {
+        if (queuedFrameCount.get() >= MAX_QUEUED_FRAMES) {
+            translatedFrames.poll();
+        } else {
+            queuedFrameCount.incrementAndGet();
+        }
         translatedFrames.add(pcm48k);
     }
 
     public short[] pollTranslatedFrame() {
-        return translatedFrames.poll();
+        short[] frame = translatedFrames.poll();
+        if (frame != null) {
+            queuedFrameCount.decrementAndGet();
+        }
+        return frame;
     }
 
     public boolean isIdle() {
@@ -44,15 +54,14 @@ public class PlayerTranslateSession {
     }
 
     public boolean isConnectedToSocket() {
-        return connected;
+        return isConnected();
     }
 
     public boolean isConnected() {
-        return connected && geminiClient.isOpen() && geminiClient.isSetupComplete();
+        return geminiClient.isOpen() && geminiClient.isSetupComplete();
     }
 
     public void close() {
-        connected = false;
         geminiClient.close();
     }
 

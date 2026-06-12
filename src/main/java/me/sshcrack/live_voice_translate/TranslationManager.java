@@ -26,13 +26,11 @@ public class TranslationManager {
     private final String apiKey;
     private final String targetLanguage;
     private final int maxSockets;
-    private int openSocketCount;
 
     private TranslationManager(String apiKey, String targetLanguage, int maxSockets) {
         this.apiKey = apiKey;
         this.targetLanguage = targetLanguage;
         this.maxSockets = maxSockets;
-        this.openSocketCount = 0;
         this.scheduler.scheduleAtFixedRate(this::checkIdleSessions, 5, 1, TimeUnit.SECONDS);
     }
 
@@ -44,42 +42,46 @@ public class TranslationManager {
         return INSTANCE;
     }
 
+    private int getOpenSocketCount() {
+        int count = 0;
+        for (PlayerTranslateSession s : activeSessions.values()) {
+            if (s.isConnected()) count++;
+        }
+        return count;
+    }
+
     public void feedAudio(UUID playerId, short[] audio48k) {
-        PlayerTranslateSession session;
         lock.lock();
         try {
-            session = activeSessions.get(playerId);
+            PlayerTranslateSession session = activeSessions.get(playerId);
             if (session == null) {
-                LiveVoiceTranslate.LOGGER.info("[TM] New session for player {} ({} open sockets, {} pending)",
-                    playerId, openSocketCount, pendingQueue.size());
+                LiveVoiceTranslate.LOGGER.info("[TM] New session for player {} ({} pending)",
+                    playerId, pendingQueue.size());
                 session = new PlayerTranslateSession(playerId, apiKey, targetLanguage);
                 activeSessions.put(playerId, session);
-                if (openSocketCount < maxSockets) {
+                if (getOpenSocketCount() < maxSockets) {
                     session.connect();
-                    openSocketCount++;
                 } else {
                     LiveVoiceTranslate.LOGGER.info("[TM] Queuing session {} (max {} sockets reached)", playerId, maxSockets);
                     pendingQueue.add(session);
                 }
             }
+            if (session.isConnected()) {
+                session.feedAudio(audio48k);
+            }
         } finally {
             lock.unlock();
-        }
-
-        if (session != null && session.isConnected()) {
-            session.feedAudio(audio48k);
         }
     }
 
     public short[] getTranslatedAudio(UUID playerId) {
-        PlayerTranslateSession session;
         lock.lock();
         try {
-            session = activeSessions.get(playerId);
+            PlayerTranslateSession session = activeSessions.get(playerId);
+            return session != null ? session.pollTranslatedFrame() : null;
         } finally {
             lock.unlock();
         }
-        return session != null ? session.pollTranslatedFrame() : null;
     }
 
     public void onPlayerSilence(UUID playerId) {
@@ -91,12 +93,8 @@ public class TranslationManager {
         try {
             PlayerTranslateSession session = activeSessions.remove(playerId);
             if (session != null) {
-                boolean wasConnected = session.isConnected();
                 session.close();
-                if (wasConnected) {
-                    openSocketCount--;
-                    LiveVoiceTranslate.LOGGER.info("[TM] Closed session {} ({} open sockets remaining)", playerId, openSocketCount);
-                }
+                LiveVoiceTranslate.LOGGER.info("[TM] Closed session {} ({} open sockets remaining)", playerId, getOpenSocketCount());
                 promoteNext();
             }
         } finally {
@@ -107,9 +105,8 @@ public class TranslationManager {
     private void promoteNext() {
         PlayerTranslateSession next = pendingQueue.poll();
         if (next != null) {
-            LiveVoiceTranslate.LOGGER.info("[TM] Promoting pending session {} ({} open sockets)", next.getPlayerId(), openSocketCount);
+            LiveVoiceTranslate.LOGGER.info("[TM] Promoting pending session {} ({} open sockets)", next.getPlayerId(), getOpenSocketCount());
             next.connect();
-            openSocketCount++;
         }
     }
 
@@ -120,12 +117,8 @@ public class TranslationManager {
                 PlayerTranslateSession session = entry.getValue();
                 if (session.isIdle()) {
                     LiveVoiceTranslate.LOGGER.debug("Closing idle translation session for player {}", entry.getKey());
-                    boolean wasConnected = session.isConnectedToSocket();
                     session.close();
-                    if (wasConnected) {
-                        openSocketCount--;
-                        promoteNext();
-                    }
+                    promoteNext();
                     return true;
                 }
                 return false;
@@ -137,6 +130,14 @@ public class TranslationManager {
 
     public void shutdown() {
         scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         lock.lock();
         try {
             for (PlayerTranslateSession session : activeSessions.values()) {
@@ -144,7 +145,6 @@ public class TranslationManager {
             }
             activeSessions.clear();
             pendingQueue.clear();
-            openSocketCount = 0;
         } finally {
             lock.unlock();
         }

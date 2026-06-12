@@ -42,8 +42,8 @@ public class GeminiTranslateClientImpl extends GeminiLiveTranslateClient {
 
     @Override
     public void onTranslatedAudio(byte[] audio, int sampleRate) {
-        short[] pcm24k = AudioResampler.littleEndianBytesToShorts(audio);
-        short[] pcm48k = AudioResampler.resample(pcm24k, sampleRate, 48000);
+        short[] pcmShorts = AudioResampler.littleEndianBytesToShorts(audio);
+        short[] pcm48k = AudioResampler.resample(pcmShorts, sampleRate, 48000);
         session.enqueueTranslatedFrame(pcm48k);
     }
 

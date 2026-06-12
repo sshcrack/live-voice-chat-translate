@@ -78,34 +78,6 @@ deps.forge = "43.5.2"
 deps.minecraft = "1.20.1"
 deps.forge = "47.4.20"
 
-[forge."1.21.1"]
-deps.minecraft = "1.21.1"
-deps.forge = "52.1.14"
-
-[forge."1.21.4"]
-deps.minecraft = "1.21.4"
-deps.forge = "54.1.16"
-
-[forge."1.21.5"]
-deps.minecraft = "1.21.5"
-deps.forge = "55.1.10"
-
-[forge."1.21.8"]
-deps.minecraft = "1.21.8"
-deps.forge = "58.1.18"
-
-[forge."1.21.10"]
-deps.minecraft = "1.21.10"
-deps.forge = "60.1.9"
-
-[forge."1.21.11"]
-deps.minecraft = "1.21.11"
-deps.forge = "61.1.8"
-
-[forge."26.1.2"]
-deps.minecraft = "26.1.2"
-deps.forge = "64.0.9"
-
 [neoforge]
 
 [neoforge."1.21.1"]

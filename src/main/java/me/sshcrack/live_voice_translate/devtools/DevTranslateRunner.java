@@ -143,17 +143,20 @@ public class DevTranslateRunner {
             }
 
             if (!anyRemaining) {
+                TranslationManager tm = TranslationManager.get();
                 boolean anyOutput = false;
-                for (TestSource source : activeSources) {
-                    short[] frame;
-                    int played = 0;
-                    while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
-                        source.channel.play(frame);
-                        anyOutput = true;
-                        played++;
-                    }
-                    if (played > 0) {
-                        LiveVoiceTranslate.LOGGER.info("[DevTools] Played {} translated frame(s) for source '{}'", played, source.name);
+                if (tm != null) {
+                    for (TestSource source : activeSources) {
+                        short[] frame;
+                        int played = 0;
+                        while ((frame = tm.getTranslatedAudio(source.uuid)) != null) {
+                            source.channel.play(frame);
+                            anyOutput = true;
+                            played++;
+                        }
+                        if (played > 0) {
+                            LiveVoiceTranslate.LOGGER.info("[DevTools] Played {} translated frame(s) for source '{}'", played, source.name);
+                        }
                     }
                 }
                 if (anyOutput) {
@@ -191,6 +194,8 @@ public class DevTranslateRunner {
     }
 
     private void feedFrame(TestSource source) {
+        TranslationManager tm = TranslationManager.get();
+        if (tm == null) return;
         int start = source.nextFrameIdx * FRAME_SIZE;
         int end = Math.min(start + FRAME_SIZE, source.pcm.length);
         short[] frame = Arrays.copyOfRange(source.pcm, start, end);
@@ -198,14 +203,16 @@ public class DevTranslateRunner {
             LiveVoiceTranslate.LOGGER.info("[DevTools] Feeding frame {}/{} for '{}'",
                 source.nextFrameIdx + 1, source.totalFrames, source.name);
         }
-        TranslationManager.get().feedAudio(source.uuid, frame);
+        tm.feedAudio(source.uuid, frame);
         source.nextFrameIdx++;
     }
 
     private void drainTranslated(TestSource source) {
+        TranslationManager tm = TranslationManager.get();
+        if (tm == null) return;
         short[] frame;
         boolean hadAny = false;
-        while ((frame = TranslationManager.get().getTranslatedAudio(source.uuid)) != null) {
+        while ((frame = tm.getTranslatedAudio(source.uuid)) != null) {
             source.channel.play(frame);
             hadAny = true;
         }
@@ -227,8 +234,11 @@ public class DevTranslateRunner {
             scheduler.shutdown();
             scheduler = null;
         }
-        for (TestSource source : allSources) {
-            TranslationManager.get().onPlayerSilence(source.uuid);
+        TranslationManager tm = TranslationManager.get();
+        if (tm != null) {
+            for (TestSource source : allSources) {
+                tm.onPlayerSilence(source.uuid);
+            }
         }
         int count = allSources.size();
         allSources.clear();

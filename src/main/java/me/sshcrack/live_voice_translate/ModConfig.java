@@ -23,7 +23,7 @@ public class ModConfig {
         this.maxWebSockets = Math.min(maxWebSockets, 3);
     }
 
-    public static ModConfig load() {
+    public static synchronized ModConfig load() {
         if (INSTANCE != null) {
             return INSTANCE;
         }
@@ -33,7 +33,8 @@ public class ModConfig {
         boolean enabled = true;
         int maxWebSockets = 3;
 
-        Path configPath = Paths.get("config", "live_voice_translate.properties");
+        String configDir = System.getProperty("live_voice_translate.config_dir", "config");
+        Path configPath = Paths.get(configDir, LiveVoiceTranslate.MOD_ID + ".properties");
         if (Files.exists(configPath)) {
             Properties props = new Properties();
             try (InputStream in = Files.newInputStream(configPath)) {
@@ -55,8 +56,8 @@ public class ModConfig {
         } else {
             if (apiKey == null || apiKey.isEmpty()) {
                 LiveVoiceTranslate.LOGGER.warn(
-                    "No GEMINI_API_KEY env var found and no config/{}.properties found. Translation will be disabled.",
-                    LiveVoiceTranslate.MOD_ID
+                    "No GEMINI_API_KEY env var found and no {} found. Translation will be disabled.",
+                    configPath
                 );
                 apiKey = "";
             }
@@ -66,7 +67,7 @@ public class ModConfig {
         return INSTANCE;
     }
 
-    public static ModConfig get() {
+    public static synchronized ModConfig get() {
         if (INSTANCE == null) {
             return load();
         }
