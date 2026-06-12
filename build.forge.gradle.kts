@@ -96,7 +96,7 @@ dependencies {
 	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
 	implementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-forge")
 	if (stonecutter.eval(sc.current.version, "<26")) {
-		runtimeOnly("maven.modrinth:simple-voice-chat:forge-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
+		modRuntimeOnly("maven.modrinth:simple-voice-chat:forge-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
 	}
 }
 

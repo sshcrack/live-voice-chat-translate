@@ -28,6 +28,7 @@ echo ""
 
 mapfile -t VERSION_ARRAY <<< "$VERSIONS"
 
+RUNNING_PIDS=()
 LOG_FILES=()
 
 ABORT=false
@@ -85,7 +86,6 @@ kill_remaining() {
     RUNNING_PIDS=()
 }
 
-RUNNING_PIDS=()
 FAILED=false
 for VERSION in "${VERSION_ARRAY[@]}"; do
     $ABORT && break

@@ -74,10 +74,11 @@ dependencies {
 		})
 	modImplementation("net.fabricmc:fabric-loader:${prop("deps.fabric-loader")}")
 	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
+	modImplementation("net.fabricmc.fabric-api:fabric-api:${prop("deps.fabric_api")}")
 	modImplementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-fabric")
 	if (stonecutter.eval(sc.current.version, "<26")) {
 		runtimeOnly("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}:fabric-stub")
-		modImplementation("maven.modrinth:simple-voice-chat:fabric-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
+		runtimeOnly("maven.modrinth:simple-voice-chat:fabric-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
 	}
 	modRuntimeOnly("net.fabricmc.fabric-api:fabric-api:${prop("deps.fabric_api")}")
 }
