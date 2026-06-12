@@ -54,15 +54,11 @@ public class TranslationManager {
         return count;
     }
 
-    public void feedAudio(UUID playerId, short[] audio48k, double[] position) {
-        feedAudio(playerId, audio48k, position);
-    }
-
     public void feedAudio(UUID playerId, short[] audio48k) {
         feedAudio(playerId, audio48k, null);
     }
 
-    private void feedAudio(UUID playerId, short[] audio48k, double[] position) {
+    public void feedAudio(UUID playerId, short[] audio48k, double[] position) {
         lock.lock();
         try {
             if (position != null) {

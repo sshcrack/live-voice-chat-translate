@@ -4,8 +4,8 @@
     {
       "file": "src/main/java/me/sshcrack/live_voice_translate/TranslationManager.java",
       "line": 57,
-      "description": "Data race on playerPositions: the write in feedAudio(UUID, short[], double[]) at line 57 (playerPositions.put) happens outside the ReentrantLock, while all reads (playerPositions.get in feedAudio(UUID, short[])) and other writes (playerPositions.remove in closeSession/checkIdleSessions) happen inside the lock. HashMap is not thread-safe — concurrent unsynchronized put with synchronized remove/get can cause stale reads or map corruption. Fix: move the playerPositions.put inside the lock, e.g. by acquiring the lock before writing, or restructuring to pass the position through to the inner feedAudio method which already holds the lock."
+      "description": "Duplicate method signature — compile error. `public void feedAudio(UUID, short[], double[])` on line 57 and `private void feedAudio(UUID, short[], double[])` on line 65 have the same parameter types. Java does not allow two methods with the same name and parameter types regardless of access modifier. The code will not compile. Fix: Remove the public 3-arg overload (lines 57-59) and make the private 3-arg version public instead, since it already holds the lock and handles position internally. Then update the 2-arg overload to delegate to the public 3-arg via `feedAudio(playerId, audio48k, null)`."
     }
   ],
-  "summary": "Found 1 issue: a data race on the new playerPositions HashMap where an unsynchronized write can race with synchronized reads/writes. This should be fixed before merging."
+  "summary": "The data race from iteration 1 is fixed (playerPositions.put is now inside the lock). However, the refactoring introduced a Java compile-time error: two methods with identical signature `feedAudio(UUID, short[], double[])` cannot coexist. Fix by removing the public 3-arg overload and making the private 3-arg version public."
 }
