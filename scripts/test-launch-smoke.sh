@@ -52,7 +52,7 @@ run_version() {
 
     echo "[$(date +%H:%M:%S)] === Testing $VERSION ==="
 
-    if ./gradlew ":$VERSION:runClient" -Plive_voice_translate.devtools=true --no-daemon 2>&1 | tee "$LOG_FILE"; then
+    if ./gradlew ":$VERSION:runClientAutoQuit" -Plive_voice_translate.devtools=true --no-daemon 2>&1 | tee "$LOG_FILE"; then
         echo "[$(date +%H:%M:%S)] === BUILD SUCCESSFUL: $VERSION ==="
     else
         EXIT_CODE=$?

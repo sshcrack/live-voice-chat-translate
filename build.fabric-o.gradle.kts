@@ -50,6 +50,15 @@ loom {
 		environment = "server"
 		configName = "Fabric Server"
 	}
+	runs.register("clientAutoQuit") {
+		client()
+		ideConfigGenerated(true)
+		runDir = "run/"
+		environment = "client"
+		programArgs("--username=Dev")
+		vmArgs("-Dlive_voice_translate.autoQuit=true")
+		configName = "Fabric Client AutoQuit"
+	}
 }
 
 repositories {

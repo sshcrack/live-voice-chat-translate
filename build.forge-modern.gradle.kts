@@ -44,6 +44,10 @@ minecraft {
 			systemProperty("forge.enabledGameTestNamespaces", prop("mod.id"))
 		}
 		register("client")
+		register("clientAutoQuit") {
+			args("--username=Dev")
+			systemProperty("live_voice_translate.autoQuit", "true")
+		}
 		register("server") {
 			args("--nogui")
 		}

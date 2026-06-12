@@ -47,6 +47,13 @@ legacyForge {
 			gameDirectory = file("run/")
 			ideName = "Forge Server (${sc.current.version})"
 		}
+		register("clientAutoQuit") {
+			client()
+			gameDirectory = file("run/")
+			ideName = "Forge Client AutoQuit (${sc.current.version})"
+			programArgument("--username=Dev")
+			jvmArgument("-Dlive_voice_translate.autoQuit=true")
+		}
 	}
 
 

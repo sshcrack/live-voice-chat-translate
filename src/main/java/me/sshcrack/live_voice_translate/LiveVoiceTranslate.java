@@ -31,6 +31,7 @@ public class LiveVoiceTranslate {
 		LOGGER.warn("!!!               DEVTOOLS MODE ENABLED                !!!");
 		LOGGER.warn("!!!    Test audio files will play around you in-game    !!!");
 		LOGGER.warn("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		me.sshcrack.live_voice_translate.devtools.DevAutoQuit.init();
 		*///?}
 		ModConfig config = ModConfig.load();
 		if (config.isEnabled()) {

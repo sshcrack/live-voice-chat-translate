@@ -54,6 +54,13 @@ neoForge {
 			gameDirectory = file("run/")
 			ideName = "NeoForge Server (${stonecutter.current.version})"
 		}
+		register("clientAutoQuit") {
+			client()
+			gameDirectory = file("run/")
+			ideName = "NeoForge Client AutoQuit (${stonecutter.current.version})"
+			programArgument("--username=Dev")
+			jvmArgument("-Dlive_voice_translate.autoQuit=true")
+		}
 	}
 
 	mods {
@@ -104,6 +111,8 @@ dependencies {
 	implementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-neoforge")
 	if (stonecutter.eval(sc.current.version, "<26")) {
 		runtimeOnly("maven.modrinth:simple-voice-chat:neoforge-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
+	} else {
+		runtimeOnly("maven.modrinth:simple-voice-chat:neoforge-${prop("voicechat_mod_version")}+${prop("deps.minecraft")}")
 	}
 }
 

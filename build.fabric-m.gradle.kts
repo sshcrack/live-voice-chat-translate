@@ -50,6 +50,15 @@ loom {
 		environment = "server"
 		configName = "Fabric Server"
 	}
+	runs.register("clientAutoQuit") {
+		client()
+		ideConfigGenerated(true)
+		runDir = "run/"
+		environment = "client"
+		programArgs("--username=Dev")
+		vmArgs("-Dlive_voice_translate.autoQuit=true")
+		configName = "Fabric Client AutoQuit"
+	}
 }
 
 repositories {
@@ -65,9 +74,7 @@ dependencies {
 	implementation("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}")
 	implementation("net.fabricmc.fabric-api:fabric-api:${prop("deps.fabric_api")}")
 	implementation("me.sshcrack:gemini_live_lib:${prop("gemini_live_lib_version")}-${prop("deps.minecraft")}-fabric")
-	if (stonecutter.eval(sc.current.version, "<26")) {
-		runtimeOnly("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}:fabric-stub")
-		runtimeOnly("maven.modrinth:simple-voice-chat:fabric-${prop("deps.minecraft")}-${prop("voicechat_mod_version")}")
-	}
+	runtimeOnly("de.maxhenkel.voicechat:voicechat-api:${prop("voicechat_api_version")}:fabric-stub")
+	runtimeOnly("maven.modrinth:simple-voice-chat:fabric-${prop("voicechat_mod_version")}+${prop("deps.minecraft")}")
 	runtimeOnly("net.fabricmc.fabric-api:fabric-api:${prop("deps.fabric_api")}")
 }
