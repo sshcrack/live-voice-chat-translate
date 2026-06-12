@@ -37,4 +37,18 @@ public class AudioResampler {
         }
         return samples;
     }
+
+    public static short[] mixAudio(short[] original, short[] translated, float volume) {
+        int maxLen = Math.max(original.length, translated.length);
+        short[] mixed = new short[maxLen];
+        for (int i = 0; i < maxLen; i++) {
+            int t = i < translated.length ? translated[i] : 0;
+            int o = i < original.length ? (int) (original[i] * volume) : 0;
+            int sum = t + o;
+            if (sum > Short.MAX_VALUE) sum = Short.MAX_VALUE;
+            else if (sum < Short.MIN_VALUE) sum = Short.MIN_VALUE;
+            mixed[i] = (short) sum;
+        }
+        return mixed;
+    }
 }
