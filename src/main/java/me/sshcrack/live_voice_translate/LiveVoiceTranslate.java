@@ -7,6 +7,8 @@ import org.apache.logging.log4j.Logger;*/
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 //?}
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 
 public class LiveVoiceTranslate {
 
@@ -40,5 +42,9 @@ public class LiveVoiceTranslate {
 		} else {
 			LOGGER.warn("Translation disabled (no valid API key configured)");
 		}
+	}
+
+	public static void openConfigScreen(Screen parent) {
+		Minecraft.getInstance().setScreen(new me.sshcrack.live_voice_translate.config.ConfigScreen(parent));
 	}
 }

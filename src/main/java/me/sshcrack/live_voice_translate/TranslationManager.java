@@ -23,9 +23,9 @@ public class TranslationManager {
         return t;
     });
 
-    private final String apiKey;
-    private final String targetLanguage;
-    private final int maxSockets;
+    private String apiKey;
+    private String targetLanguage;
+    private int maxSockets;
 
     private TranslationManager(String apiKey, String targetLanguage, int maxSockets) {
         this.apiKey = apiKey;
@@ -123,6 +123,27 @@ public class TranslationManager {
                 }
                 return false;
             });
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void hotReload() {
+        lock.lock();
+        try {
+            LiveVoiceTranslate.LOGGER.info("[TM] Hot-reloading translation manager");
+            for (PlayerTranslateSession session : activeSessions.values()) {
+                session.close();
+            }
+            activeSessions.clear();
+            pendingQueue.clear();
+
+            ModConfig config = ModConfig.get();
+            this.apiKey = config.getApiKey();
+            this.targetLanguage = config.getTargetLanguage();
+            this.maxSockets = config.getMaxWebSockets();
+            LiveVoiceTranslate.LOGGER.info("[TM] Hot-reloaded configuration: lang={}, maxSockets={}",
+                targetLanguage, maxSockets);
         } finally {
             lock.unlock();
         }
